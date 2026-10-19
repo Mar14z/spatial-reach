@@ -36,6 +36,7 @@ assets/robots/phantomx_pincher_arm/
 assets/robots/phantomx_pincher_cad/pincher.step.glb
 assets/robots/phantomx_pincher_cad/pincher_assembly.obj
 docs/assets/pincher/
+docs/assets/calibration/
 
 # 缓存
 .pytest_cache/
