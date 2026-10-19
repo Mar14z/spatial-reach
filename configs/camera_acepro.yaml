@@ -1,0 +1,29 @@
+# Insta360 Ace Pro UVC + 标定配置（标准 YAML，供 touch.camera 读取）
+device_name: Insta360 Ace Pro
+usb_vid_pid: "2E1A:0002"
+camera_index: 0
+backend: dshow
+width: 1280
+height: 720
+fps: 30
+pixel_format: MJPG
+undistort: true
+calibration: configs/camera_intrinsics.yaml
+
+# 训练模型使用 4:3 的 640x480；真实 16:9 画面会先中心裁切再缩放。
+model_input:
+  width: 640
+  height: 480
+
+supported_formats:
+  - {width: 640, height: 360, fps: 30, format: MJPG}
+  - {width: 1280, height: 720, fps: 30, format: MJPG}
+  - {width: 1920, height: 1080, fps: 30, format: MJPG}
+  - {width: 1920, height: 1080, fps: 30, format: H264}
+
+notes:
+  - "不支持 640x480。"
+  - "Webcam 模式可能有人脸检测自动变焦；用于标定/PnP 时必须关闭。"
+  - "151° 是镜头对角线 FOV，不是垂直 FOV；webcam 输出实际约 91°x60°。"
+  - "中心裁 4:3 后垂直 FOV ≈ 60°，与仿真 camera.yaml 一致。"
+  - "标定结果由 scripts/calibrate_camera.py 写入 configs/camera_intrinsics.yaml。"

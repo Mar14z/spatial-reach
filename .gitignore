@@ -1,0 +1,41 @@
+# Python
+.venv/
+__pycache__/
+*.py[cod]
+*.egg-info/
+.ipynb_checkpoints/
+
+# 数据与产物
+data/**/*
+!data/**/.gitkeep
+outputs/**/*
+!outputs/**/.gitkeep
+
+# 模型与部署产物
+*.onnx
+*.engine
+*.bin
+*.pt
+*.pth
+
+# 仿真与工具缓存
+*.blend1
+*.usd
+*.usda
+.DS_Store
+Thumbs.db
+
+# 本地教学 / 协作文件（不入库）
+.qoder/
+AGENTS.md
+docs/learning/
+5_轴机械臂项目推荐_*.md
+
+# 旧模型与大体积 CAD 源文件（保留本地）
+assets/robots/phantomx_pincher_arm/
+assets/robots/phantomx_pincher_cad/pincher.step.glb
+assets/robots/phantomx_pincher_cad/pincher_assembly.obj
+docs/assets/pincher/
+
+# 缓存
+.pytest_cache/
