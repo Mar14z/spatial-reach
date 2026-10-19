@@ -1,0 +1,22 @@
+# 仿真
+# PyBullet：Windows 没有 pip 轮子，请用 conda-forge 安装（见 README）；Linux/WSL 可直接 pip
+# pybullet
+pyrender
+trimesh
+
+# 数值与视觉
+numpy
+scipy
+opencv-python
+pyyaml
+tqdm
+
+# 学习与导出
+# CUDA 12.8 / RTX 5070:
+# pip install torch torchvision --index-url https://download.pytorch.org/whl/cu128
+torch
+torchvision
+onnx
+
+# 可视化
+matplotlib

@@ -1,0 +1,8 @@
+# 仿真虚拟相机参数（不是真实 Ace Pro）
+# 真实相机见 configs/camera_acepro.yaml。
+# 真实 1280x720 中心裁 4:3 后垂直 FOV ≈ 60°，与这里一致。
+width: 640
+height: 480
+fov_deg: 60
+near: 0.05
+far: 5.0
