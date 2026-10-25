@@ -31,6 +31,11 @@ AGENTS.md
 docs/learning/
 5_轴机械臂项目推荐_*.md
 
+# 文档不入库：主副本在 Obsidian vault (D:\documents\note)
+# 仓库只保留根目录 README.md 一份说明，新增文档请写到 vault
+*.md
+!/README.md
+
 # 旧模型与大体积 CAD 源文件（保留本地）
 assets/robots/phantomx_pincher_arm/
 assets/robots/phantomx_pincher_cad/pincher.step.glb
