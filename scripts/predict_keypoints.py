@@ -50,14 +50,21 @@ def main():
         default="none",
     )
     parser.add_argument("--extra-labels", type=Path, default=None)
+    parser.add_argument(
+        "--input-size",
+        type=str,
+        default=f"{INPUT_W}x{INPUT_H}",
+        help="必须与训练时一致；热图始终是 640x480/stride，本参数只改 encoder 看到的清晰度",
+    )
     args = parser.parse_args()
 
+    in_w, in_h = (int(v) for v in args.input_size.lower().split("x"))
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     dataset = M0Dataset(
         args.val,
         stride=4,
         sigma=3.0,
-        image_size=(INPUT_H, INPUT_W),
+        image_size=(in_h, in_w),
         preprocess=args.preprocess,
         extra_labels=args.extra_labels,
     )
@@ -81,7 +88,7 @@ def main():
         sample = dataset[index]
         image = torch.from_numpy(sample["image"]).permute(2, 0, 1)[None]
         image = F.interpolate(
-            image, size=(INPUT_H, INPUT_W), mode="bilinear", align_corners=False
+            image, size=(in_h, in_w), mode="bilinear", align_corners=False
         )
         image = normalize(image).to(device)
         with torch.no_grad():
