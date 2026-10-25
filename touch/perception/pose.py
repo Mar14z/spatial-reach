@@ -115,3 +115,71 @@ def select_candidate(cands, z_min: float = 0.0, dist_cm: tuple = (15.0, 250.0)):
         if C[2] >= z_min and dist_cm[0] <= np.linalg.norm(C) * 100 <= dist_cm[1]:
             ok.append(c)
     return (ok or cands)[0]
+
+
+def select_candidate_multiframe(
+    K: np.ndarray,
+    cands,
+    observations,
+) -> tuple[tuple, np.ndarray]:
+    """跨帧仲裁：用其余各帧的重投影残差，在单帧候选里挑一个。
+
+    相机不动、机械臂动 pan 时，每帧的 3D 点不同而相机位姿是同一个，
+    镜像解只对原来那张平面成立，臂平面一转就对不上。
+
+    但实测收益有限：它只能在候选里挑，而单帧错帧里多数是「候选集本身就
+    偏离真值 20–30°」，挑不出不存在的东西（500 帧上 97.2–98.2%，与单帧
+    持平甚至略低）。要真正的增益请用 solve_pnp_multiframe。
+
+    observations: [(points3d_i, points2d_i), ...]，每帧各自的点集与观测。
+    返回 (best, scores)，scores[i] 为第 i 个候选的跨帧平均 RMS(px)。
+    """
+    K = np.asarray(K, dtype=np.float64)
+    scores = []
+    for R, t in ((c[0], c[1]) for c in cands):
+        rvec, _ = cv2.Rodrigues(np.asarray(R, np.float64))
+        per_frame = []
+        for p3, p2 in observations:
+            obj = np.asarray(p3, np.float64).reshape(-1, 3)
+            img = np.asarray(p2, np.float64).reshape(-1, 2)
+            uv, _ = cv2.projectPoints(obj, rvec, np.asarray(t, np.float64), K, None)
+            per_frame.append(np.sum((uv.reshape(-1, 2) - img) ** 2, axis=1).mean())
+        scores.append(float(np.sqrt(np.mean(per_frame))))
+    scores = np.asarray(scores)
+    return cands[int(np.argmin(scores))], scores
+
+
+def solve_pnp_multiframe(
+    K: np.ndarray,
+    observations,
+    seeds=None,
+) -> tuple[np.ndarray, np.ndarray, float]:
+    """多帧联合求同一个相机位姿，返回 (R_cb, t_cb, rms_px)。
+
+    把各帧的 3D 点拼成一个点集，它们来自不同臂姿态，合并后不再共面：
+    镜像解失去立足点，同时各帧的 2D 噪声被平均。seeds 给多个初值
+    （一般就是单帧双解），取联合残差最小的那个——单初值会陷局部极小。
+
+    2 帧（pan 转 5–30°）实测 98.2% → 99.0–99.8%，两帧全合成时 100%。
+    """
+    obj = np.vstack([np.asarray(p3, float).reshape(-1, 3) for p3, _ in observations])
+    img = np.vstack([np.asarray(p2, float).reshape(-1, 2) for _, p2 in observations])
+    if seeds is None:
+        seeds = [solve_pnp(K, *observations[0], use_ransac=False)[:2]]
+
+    best = None
+    for R0, t0 in seeds:
+        rvec, _ = cv2.Rodrigues(np.asarray(R0, float))
+        tvec = np.asarray(t0, float).reshape(3)
+        ok, rvec, tvec = cv2.solvePnP(
+            obj, img, K, None, rvec, tvec, True, flags=cv2.SOLVEPNP_ITERATIVE
+        )
+        if not ok:
+            continue
+        uv, _ = cv2.projectPoints(obj, rvec, tvec, K, None)
+        rms = float(np.sqrt(np.mean(np.sum((uv.reshape(-1, 2) - img) ** 2, axis=1))))
+        if best is None or rms < best[2]:
+            best = (cv2.Rodrigues(rvec)[0], tvec.reshape(3), rms)
+    if best is None:
+        raise ValueError("solve_pnp_multiframe failed")
+    return best
