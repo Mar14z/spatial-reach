@@ -183,3 +183,56 @@ def solve_pnp_multiframe(
     if best is None:
         raise ValueError("solve_pnp_multiframe failed")
     return best
+
+
+def _reproj_rms(obj, img, K, rvec, tvec) -> float:
+    uv, _ = cv2.projectPoints(obj, rvec, tvec, K, None)
+    d = uv.reshape(-1, 2) - np.asarray(img, np.float64).reshape(-1, 2)
+    return float(np.sqrt(np.mean(np.sum(d ** 2, axis=1))))
+
+
+def solve_pnp_sequence(K, observations, seeds, reject_k: float = 3.0):
+    """序列联合解：相机不动、各帧臂姿态不同，联合求同一个 (R_cb, t_cb)。
+
+    臂一转 pan 各帧点集就不再共面，镜像解失去立足点；同时多帧 2D 噪声被
+    平均。与 solve_pnp_multiframe 的区别是：seeds 给**全部单帧解**（单初值
+    会陷局部极小），且解完按逐帧残差剔除离群帧再解一次——一帧预测崩了不
+    该把整组带歪。
+
+    observations: [(points3d_i, points2d_i), ...]，同一序列的每帧。
+    seeds: [(R, t), ...]，候选初值。
+    返回 (R_cb, t_cb, joint_rms_px, per_frame_rms)。
+    """
+    obs = [
+        (np.asarray(p3, np.float64).reshape(-1, 3), np.asarray(p2, np.float64).reshape(-1, 2))
+        for p3, p2 in observations
+    ]
+    keep = list(range(len(obs)))
+    best = None
+    per = np.full(len(obs), np.inf)
+    while True:
+        sub = [obs[i] for i in keep]
+        obj = np.vstack([o[0] for o in sub])
+        img = np.vstack([o[1] for o in sub])
+        best = None
+        for R0, t0 in seeds:
+            ok, rvec, tvec = cv2.solvePnP(
+                obj, img, K, None, cv2.Rodrigues(np.asarray(R0, np.float64))[0],
+                np.asarray(t0, np.float64).reshape(3), True, flags=cv2.SOLVEPNP_ITERATIVE,
+            )
+            if not ok:
+                continue
+            rms = _reproj_rms(obj, img, K, rvec, tvec)
+            if best is None or rms < best[2]:
+                best = (cv2.Rodrigues(rvec)[0], tvec.reshape(3), rms)
+        if best is None:
+            raise ValueError("solve_pnp_sequence failed")
+        rr = cv2.Rodrigues(best[0])[0]
+        per = np.array([_reproj_rms(o[0], o[1], K, rr, best[1]) for o in obs])
+        if len(keep) <= 2:
+            break
+        worst = keep[int(np.argmax(per[keep]))]
+        if per[worst] <= reject_k * float(np.median(per[keep])):
+            break
+        keep.remove(worst)
+    return best[0], best[1], best[2], per
