@@ -1,83 +1,60 @@
 """同规格消融评测：输入 val 目录 + 预测 JSON，输出一行完整指标。
 
+指标实现全部来自 touch.learning.evaluate —— 本脚本只做格式化，不再自己算一遍，
+避免与 eval_report.py 分叉出第二套口径（历史教训：同一份预测曾报出 1.79px 与
+2.03px，差别只在统计单元）。
+
+2D 误差同时报两级，数值不可混用：
+  - 2Dkp 关键点级：每帧每点一个样本，n = 帧数 × 点数，PCK 的常规口径
+  - 2Dfr 帧级：帧内先求均值，n = 帧数，尾部被削平，数值偏小
+
 用法：
     python scripts/ablation_report.py <val_dir> <pred_json> <label>
 """
 
-import json
 import sys
 from pathlib import Path
 
-import cv2
 import numpy as np
 
-sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
-from touch.perception.pose import solve_pnp
-
-val_dir, pred_path, label = sys.argv[1], sys.argv[2], sys.argv[3]
-pred = json.loads(Path(pred_path).read_text(encoding="utf-8"))["frames"]
-frames = sorted(p for p in Path(val_dir).iterdir() if p.is_dir())
-extra = None
-if len(sys.argv) > 4:
-    z = np.load(sys.argv[4])
-    extra = {str(n): (u, x) for n, u, x in zip(z["frames"], z["uv"], z["xyz"])}
-
-gx, gy = np.meshgrid(np.linspace(0.05, 0.45, 6), np.linspace(-0.2, 0.2, 5))
-TABLE = np.stack([gx.ravel(), gy.ravel(), np.zeros(gx.size)], axis=1)
-
-# 一级指标：翻转（镜像解）与可用率（位姿落在容差内的帧占比）。
-# 中位误差会掩盖双峰分布，不能单独用作优化目标。
-FLIP_DEG = 15.0
-USABLE = ((3.0, 5.0), (5.0, 10.0))
+ROOT = Path(__file__).resolve().parents[1]
+sys.path.insert(0, str(ROOT))
+from touch.learning.evaluate import evaluate_frames, load_predictions, summarize
 
 
-def table_cm(K, R, t, R_gt, t_gt):
-    uv, _ = cv2.projectPoints(TABLE, R_gt, t_gt, K, None)
-    uv = uv.reshape(-1, 2)
-    inside = (uv[:, 0] >= 0) & (uv[:, 0] < 640) & (uv[:, 1] >= 0) & (uv[:, 1] < 480)
-    if inside.sum() < 3:
-        return np.nan
-    C = -R.T @ t
-    d = R.T @ (np.linalg.inv(K) @ np.hstack([uv[inside], np.ones((inside.sum(), 1))]).T)
-    X = C[:, None] + d * (-C[2] / d[2])
-    return float(np.linalg.norm(X.T - TABLE[inside], axis=1).mean() * 100)
+def main():
+    if len(sys.argv) < 4:
+        sys.exit(__doc__)
+    val_dir, pred_path, label = sys.argv[1], sys.argv[2], sys.argv[3]
+    frames, _ = load_predictions(pred_path)
+    extra = None
+    if len(sys.argv) > 4:
+        z = np.load(sys.argv[4])
+        extra = {str(n): (u, x) for n, u, x in zip(z["frames"], z["uv"], z["xyz"])}
+
+    records, cfg = evaluate_frames(val_dir, frames, extra)
+    s = summarize(records, cfg)
+    per_kp = " ".join(f"{v:.2f}" for v in s["per_kp_mean"])
+    use = "   ".join(f"@{k} {v * 100:5.1f}%" for k, v in s["usable"].items())
+
+    print(f"=== {label} ({s['n_frames']} val frames, {len(s['per_kp_mean'])} keypoints) ===")
+    # 同一种误差、两种统计单元，数值不可混用
+    print(f"2D kp  mean {s['kp_px_mean']:5.2f}  median {s['kp_px_median']:5.2f}  "
+          f"p95 {s['kp_px_p95']:5.2f} px  n={s['n_kp_samples']:4d} 每帧每点")
+    print(f"2D fr  mean {s['px_mean']:5.2f}  median {s['px_median']:5.2f}  "
+          f"p95 {s['px_p95']:5.2f} px  n={s['n_frames']:4d} 帧内先求均值")
+    print(f"PCK  kp @3 {s['kp_pck3'] * 100:5.1f}%  @5 {s['kp_pck5'] * 100:5.1f}%   "
+          f"frame @3 {s['pck3'] * 100:5.1f}%   NME {s['nme']:.4f}")
+    print(f"bias |dv| max {s['bias_v_max']:4.2f} px  "
+          f"worst kp{int(np.argmax(s['per_kp_mean']))} {max(s['per_kp_mean']):.2f}px")
+    print(f"per-kp px: {per_kp}")
+    print(f"PnP  trans {s['trans_median']:5.2f}/{s['trans_p95']:6.2f} cm   "
+          f"rot {s['rot_median']:5.2f}/{s['rot_p95']:6.2f} deg   "
+          f"flips {s['flips']:2d} ({s['flip_rate'] * 100:4.1f}%)")
+    print(f"use  {use}")
+    print(f"tbl  median {s['table_median']:5.2f}  p95 {s['table_p95']:6.2f} cm   "
+          f">5cm {s['table_over5']:2d}")
 
 
-rows, kp_errs, kp_bias, per_kp = [], [], [], []
-for frame in frames:
-    meta = json.loads((frame / "meta.json").read_text(encoding="utf-8"))
-    gt = np.asarray(meta["keypoints_2d"], dtype=np.float64)
-    p3 = np.asarray(meta["keypoints_3d_base"], dtype=np.float64)
-    if extra is not None:
-        uv_x, xyz_x = extra[frame.name]
-        gt = np.vstack([gt, uv_x])
-        p3 = np.vstack([p3, xyz_x])
-    p2 = np.asarray(pred[frame.name]["pred_2d"], dtype=np.float64)
-    K = np.asarray(meta["K"], dtype=np.float64)
-    R_gt = np.asarray(meta["R_cb"], dtype=np.float64)
-    t_gt = np.asarray(meta["t_cb"], dtype=np.float64)
-    e = np.linalg.norm(p2 - gt, axis=1)
-    kp_errs.append(e)
-    kp_bias.append((p2 - gt)[:, 1])
-    per_kp.append(e)
-    R, t, _ = solve_pnp(K, p3, p2, 5.0, use_ransac=False, method=cv2.SOLVEPNP_SQPNP)
-    rot = np.degrees(np.arccos(np.clip((np.trace(R.T @ R_gt) - 1) / 2, -1, 1)))
-    rows.append((
-        np.linalg.norm(-R.T @ t + R_gt.T @ t_gt) * 100, rot, table_cm(K, R, t, R_gt, t_gt),
-        float(e.mean() / max(np.linalg.norm(gt[min(8, len(gt) - 1)] - gt[0]), 1.0)),
-    ))
-
-E, B, A = np.stack(kp_errs), np.stack(kp_bias), np.asarray(rows)
-a = A[~np.isnan(A[:, 2])]
-print(f"=== {label} ({len(frames)} val frames, {E.shape[1]} keypoints) ===")
-print(f"2D   mean {E.mean():5.2f}  median {np.median(E):5.2f}  p95 {np.percentile(E,95):5.2f} px")
-print(f"PCK  @3 {(E<=3).mean()*100:5.1f}%  @5 {(E<=5).mean()*100:5.1f}%   NME {A[:,3].mean():.4f}")
-print(f"bias |dv| max {np.abs(B.mean(0)).max():4.2f} px  worst kp{int(np.argmax(E.mean(0)))} {E.mean(0).max():.2f}px")
-print(f"per-kp px: " + " ".join(f"{v:.2f}" for v in E.mean(0)))
-print(f"PnP  trans {np.median(a[:,0]):5.2f}/{np.percentile(a[:,0],95):6.2f} cm   "
-      f"rot {np.median(a[:,1]):5.2f}/{np.percentile(a[:,1],95):6.2f} deg   "
-      f"flips {(a[:,1]>FLIP_DEG).sum():2d} ({(a[:,1]>FLIP_DEG).mean()*100:4.1f}%)")
-print("use  " + "   ".join(
-    f"@{tc:g}cm/{rd:g}° {((a[:,0] <= tc) & (a[:,1] <= rd)).mean()*100:5.1f}%"
-    for tc, rd in USABLE))
-print(f"tbl  median {np.median(a[:,2]):5.2f}  p95 {np.percentile(a[:,2],95):6.2f} cm   >5cm {(a[:,2]>5).sum():2d}")
+if __name__ == "__main__":
+    main()
