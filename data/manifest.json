@@ -44,6 +44,28 @@
     ],
     "created": "2026-10-24"
   },
+  "m0_seq": {
+    "purpose": "序列训练集：同序列相机/桌面/光照固定，只转 pan；用于多帧联合与域随机化训练",
+    "split": "train+val",
+    "frames": [3200, 320],
+    "seeds": [6000, 6001],
+    "urdf": "assets/robots/phantomx_pincher_cad/phantomx_pincher_cad_keypoints_v1.urdf",
+    "keypoints": [
+      "kp_base", "kp_shoulder_pan", "kp_shoulder_lift", "kp_upper_mid",
+      "kp_elbow", "kp_forearm_mid", "kp_wrist", "kp_wrist_mid", "kp_gripper_base"
+    ],
+    "sequence": {
+      "len": 4,
+      "pan_span_deg": 30,
+      "pan_step_deg": 10,
+      "note": "meta 的 sequence / frame_in_seq 字段可用于分组；同序列 camera 与 shadow 严格一致"
+    },
+    "camera": {"dist_m": [0.35, 0.80], "pitch_deg": [-45, -5], "yaw_deg": [0, 360]},
+    "light": {"y": [-1.0, 0.6], "note": "含逆光方向"},
+    "render": {"shadow_p": 0.5, "noise_max": 3.0, "blur_p": 0.3, "jpeg_q": [60, 95]},
+    "measured_vs_kp9b": "yaw KS 0.02 / pitch 0.50 / dist 0.44 / light.y 0.52；val vs train 全部 KS <= 0.12",
+    "created": "2026-10-25"
+  },
   "m0_ood": {
     "purpose": "分布外测试集：测模型在没见过的视角/距离/光照/成像条件下还剩多少。只测一次，不可用于调参或训练",
     "split": "test",

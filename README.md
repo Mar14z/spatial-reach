@@ -197,7 +197,7 @@ python scripts/render_urdf.py
 
 ![CAD model](assets/robots/phantomx_pincher_cad/pincher_cad_upright_a.png)
 
-当前配置：CAD URDF 路径由 [generate_frames.py](file:///D:/documents/Code/touch/scripts/generate_frames.py#L35) 的 `URDF` 常量指定，指向 [phantomx_pincher_cad_keypoints.urdf](file:///D:/documents/Code/touch/assets/robots/phantomx_pincher_cad/phantomx_pincher_cad_keypoints.urdf)；基础模型由 [build_cad_urdf.py](file:///D:/documents/Code/touch/scripts/build_cad_urdf.py) 生成、关键点标记由 [build_keypoint_urdf.py](file:///D:/documents/Code/touch/scripts/build_keypoint_urdf.py) 注入，渲染见 [pincher_cad_views.png](file:///D:/documents/Code/touch/outputs/renders/pincher_cad_views.png)。
+当前配置：CAD URDF 由 `--urdf` 显式传入，指向 [phantomx_pincher_cad_keypoints_v1.urdf](file:///D:/documents/Code/touch/assets/robots/phantomx_pincher_cad/phantomx_pincher_cad_keypoints_v1.urdf)（各数据集的配方与 keypoint 顺序见 [data/manifest.json](file:///D:/documents/Code/touch/data/manifest.json)）；基础模型由 [build_cad_urdf.py](file:///D:/documents/Code/touch/scripts/build_cad_urdf.py) 生成、关键点标记由 [build_keypoint_urdf.py](file:///D:/documents/Code/touch/scripts/build_keypoint_urdf.py) 注入，渲染见 [pincher_cad_views.png](file:///D:/documents/Code/touch/outputs/renders/pincher_cad_views.png)。
 
 旧的手工 URDF 仅本地保留作对照；它的 5.4cm 基座高度是另一个参考点，不再作为默认。
 
@@ -227,7 +227,22 @@ python scripts/generate_frames.py --urdf $URDF --kp-names $KP --frames 100 --see
   --out data/synthetic/m0_kp9b/val --yaw-min 0 --yaw-max 360 \
   --dist-min 0.35 --dist-max 0.60 --pitch-min -25 --pitch-max -5 --no-depth
 
-# 1b) 分布外测试集（配方见 data/manifest.json 的 m0_ood）
+# 1b) 序列训练集：同序列相机/桌面/光照固定，只转 pan（800 序列 x 4 帧）
+#     同时扩了分布：dist 0.35-0.80、pitch -45~-5、阴影/噪声/JPEG/逆光随机
+python scripts/generate_frames.py --urdf $URDF --kp-names $KP \
+  --frames 3200 --seed 6000 --out data/synthetic/m0_seq/train --no-depth \
+  --seq-len 4 --pan-span 30 \
+  --dist-min 0.35 --dist-max 0.80 --pitch-min -45 --pitch-max -5 \
+  --shadow-p 0.5 --light-y-min -1.0 --light-y-max 0.6 \
+  --noise-max 3 --jpeg-min 60 --jpeg-max 95 --blur-p 0.3
+python scripts/generate_frames.py --urdf $URDF --kp-names $KP \
+  --frames 320 --seed 6001 --out data/synthetic/m0_seq/val --no-depth \
+  --seq-len 4 --pan-span 30 \
+  --dist-min 0.35 --dist-max 0.80 --pitch-min -45 --pitch-max -5 \
+  --shadow-p 0.5 --light-y-min -1.0 --light-y-max 0.6 \
+  --noise-max 3 --jpeg-min 60 --jpeg-max 95 --blur-p 0.3
+
+# 1c) 分布外测试集（配方见 data/manifest.json 的 m0_ood）
 python scripts/check_dataset_coverage.py data/synthetic/m0_ood/mild --ref data/synthetic/m0_kp9b/train
 
 # 2) 训练（GPU，cache + AMP）
@@ -236,6 +251,13 @@ python scripts/train_keypoints.py --model resnet18 \
   --steps 1000 --batch-size 64 --workers 0 --cache --lr 3e-3 \
   --stride 4 --sigma 3.0 --eval-every 500 \
   --ckpt outputs/checkpoints/m0_kp9_resnet18.pth
+
+# 2b) 序列集训练（宽分布 + 退化，内存不足 4GB 时不要加 --cache）
+python scripts/train_keypoints.py --model resnet18 \
+  --train-root data/synthetic/m0_seq/train --val-root data/synthetic/m0_seq/val \
+  --steps 3200 --batch-size 64 --workers 2 --lr 3e-3 \
+  --stride 4 --sigma 3.0 --eval-every 400 --preprocess gamma \
+  --ckpt outputs/checkpoints/m0_seq_gamma.pth
 
 # 3) TensorBoard
 tensorboard --logdir outputs/tb
