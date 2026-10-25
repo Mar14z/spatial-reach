@@ -1,0 +1,85 @@
+{
+  "m0_kp9b_test": {
+    "purpose": "held-out test，只允许看一次，不参与任何调参",
+    "split": "test",
+    "frames": 500,
+    "seeds": [4000, 4001, 4002, 4003],
+    "urdf": "assets/robots/phantomx_pincher_cad/phantomx_pincher_cad_keypoints_v1.urdf",
+    "keypoints": [
+      "kp_base", "kp_shoulder_pan", "kp_shoulder_lift", "kp_upper_mid",
+      "kp_elbow", "kp_forearm_mid", "kp_wrist", "kp_wrist_mid", "kp_gripper_base"
+    ],
+    "camera": {
+      "dist_m": [0.35, 0.6],
+      "pitch_deg": [-25, -5],
+      "yaw_deg": [0, 360],
+      "intrinsics": "Ace Pro 1280x720 center-crop 4:3 -> 640x480",
+      "distortion": false
+    },
+    "render": {"shadow": 0, "depth_saved": false, "finger_colors": "black（必须与训练时一致）"},
+    "created": "2026-10-24"
+  },
+  "m0_kp9b": {
+    "purpose": "val / 调参用（已被反复使用，不可当 test）",
+    "split": "train+val",
+    "frames": [1000, 100],
+    "seeds": [2000, 2003, 3000, 3001],
+    "urdf": "assets/robots/phantomx_pincher_cad/phantomx_pincher_cad_keypoints_v1.urdf",
+    "keypoints": [
+      "kp_base", "kp_shoulder_pan", "kp_shoulder_lift", "kp_upper_mid",
+      "kp_elbow", "kp_forearm_mid", "kp_wrist", "kp_wrist_mid", "kp_gripper_base"
+    ],
+    "camera": {"dist_m": [0.35, 0.6], "pitch_deg": [-25, -5], "yaw_deg": [0, 360]},
+    "created": "2026-10-21"
+  },
+  "m0_kp9c": {
+    "purpose": "9 点新布局（7 臂 + 2 基座）验证集，已判定劣于 v1",
+    "split": "train+val",
+    "frames": [1000, 100],
+    "seeds": [2200, 2203, 3200, 3201],
+    "urdf": "assets/robots/phantomx_pincher_cad/phantomx_pincher_cad_keypoints.urdf",
+    "keypoints": [
+      "kp_base", "kp_shoulder_pan", "kp_shoulder_lift", "kp_upper_mid",
+      "kp_elbow", "kp_forearm_mid", "kp_wrist", "kp_base_left", "kp_base_right"
+    ],
+    "created": "2026-10-24"
+  },
+  "m0_ood": {
+    "purpose": "分布外测试集：测模型在没见过的视角/距离/光照/成像条件下还剩多少。只测一次，不可用于调参或训练",
+    "split": "test",
+    "urdf": "assets/robots/phantomx_pincher_cad/phantomx_pincher_cad_keypoints_v1.urdf",
+    "keypoints": [
+      "kp_base", "kp_shoulder_pan", "kp_shoulder_lift", "kp_upper_mid",
+      "kp_elbow", "kp_forearm_mid", "kp_wrist", "kp_wrist_mid", "kp_gripper_base"
+    ],
+    "subsets": {
+      "mild": {
+        "frames": 200,
+        "seeds": [9000],
+        "camera": {"dist_m": [0.65, 0.78], "pitch_deg": [-35, -20], "yaw_deg": [0, 360]},
+        "light": {"y": [-1.0, -0.2]},
+        "render": {"shadow": 1, "noise_sigma": 2.0, "blur": false, "jpeg_q": 75},
+        "measured_vs_train": "pitch KS 0.78 / dist KS 1.00 / kp_margin KS 0.88"
+      },
+      "hard": {
+        "frames": 200,
+        "seeds": [9100],
+        "camera": {"dist_m": [0.85, 0.95], "pitch_deg": [-55, -6], "yaw_deg": [0, 360]},
+        "light": {"y": [0.2, 0.6], "note": "逆光，与训练集方向相反"},
+        "render": {"shadow": 1, "noise_sigma": 3.0, "blur": true, "jpeg_q": 60},
+        "measured_vs_train": "pitch KS 0.68 / dist KS 1.00 / light.y KS 1.00 / kp_margin KS 0.97"
+      }
+    },
+    "created": "2026-10-25"
+  },
+  "m0_plain": {
+    "purpose": "无标记 6 点基线（同规格消融 A 档）",
+    "split": "train+val",
+    "frames": [1000, 100],
+    "seeds": [2000, 2003, 3000, 3001],
+    "urdf": "assets/robots/phantomx_pincher_cad/phantomx_pincher_cad.urdf",
+    "keypoints": ["base_link", "arm_shoulder_pan_link", "arm_bicep_link",
+                  "arm_forearm_link", "arm_wrist_flex_link", "gripper_active_link"],
+    "created": "2026-10-22"
+  }
+}

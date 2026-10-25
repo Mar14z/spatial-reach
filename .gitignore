@@ -8,6 +8,8 @@ __pycache__/
 # 数据与产物
 data/**/*
 !data/**/.gitkeep
+# 数据集配方是唯一真源：不入库就没法复现任何一份合成数据
+!data/manifest.json
 outputs/**/*
 !outputs/**/.gitkeep
 

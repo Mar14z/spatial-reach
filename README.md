@@ -215,17 +215,24 @@ python scripts/render_urdf.py
 ### 复现
 
 ```bash
-# 1) 生成 9 点合成数据（单进程示例；大数据可用 parts + merge_parts.py）
-python scripts/generate_frames.py --frames 1000 --seed 500 \
-  --out data/synthetic/m0_kp9/train --yaw-min 0 --yaw-max 360 \
+# 1) 生成 9 点合成数据
+#    --urdf / --kp-names 都必须显式给：URDF 里有不止一种 keypoint 布局，
+#    拿错不会报错但和 checkpoint 对不上。本仓库主力数据用的就是下面这套。
+URDF=assets/robots/phantomx_pincher_cad/phantomx_pincher_cad_keypoints_v1.urdf
+KP=kp_base,kp_shoulder_pan,kp_shoulder_lift,kp_upper_mid,kp_elbow,kp_forearm_mid,kp_wrist,kp_wrist_mid,kp_gripper_base
+python scripts/generate_frames.py --urdf $URDF --kp-names $KP --frames 1000 --seed 500 \
+  --out data/synthetic/m0_kp9b/train --yaw-min 0 --yaw-max 360 \
   --dist-min 0.35 --dist-max 0.60 --pitch-min -25 --pitch-max -5 --no-depth
-python scripts/generate_frames.py --frames 100 --seed 501 \
-  --out data/synthetic/m0_kp9/val --yaw-min 0 --yaw-max 360 \
+python scripts/generate_frames.py --urdf $URDF --kp-names $KP --frames 100 --seed 501 \
+  --out data/synthetic/m0_kp9b/val --yaw-min 0 --yaw-max 360 \
   --dist-min 0.35 --dist-max 0.60 --pitch-min -25 --pitch-max -5 --no-depth
+
+# 1b) 分布外测试集（配方见 data/manifest.json 的 m0_ood）
+python scripts/check_dataset_coverage.py data/synthetic/m0_ood/mild --ref data/synthetic/m0_kp9b/train
 
 # 2) 训练（GPU，cache + AMP）
 python scripts/train_keypoints.py --model resnet18 \
-  --train-root data/synthetic/m0_kp9/train --val-root data/synthetic/m0_kp9/val \
+  --train-root data/synthetic/m0_kp9b/train --val-root data/synthetic/m0_kp9b/val \
   --steps 1000 --batch-size 64 --workers 0 --cache --lr 3e-3 \
   --stride 4 --sigma 3.0 --eval-every 500 \
   --ckpt outputs/checkpoints/m0_kp9_resnet18.pth
