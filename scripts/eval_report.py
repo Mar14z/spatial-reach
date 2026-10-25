@@ -32,6 +32,33 @@ def fmt(v, ci=None, unit=""):
     return s
 
 
+# GT 点集 PCA 的 minor/major 比：越接近 0，9 个点在图上越接近一条直线。
+# 视线几乎平行臂平面时点集退化，PnP 必然镜像双解——这类帧再准也解不出唯一位姿，
+# 混在总数里会把可解帧的精度淹没，必须分档看。
+STRATA = [(0.0, 0.15, "近共线"), (0.15, 0.30, "边缘"), (0.30, 1.01, "可解")]
+
+
+def strata(records, cfg):
+    out = {}
+    for lo, hi, name in STRATA:
+        sub = [r for r in records if lo <= r.get("spread2d", np.nan) < hi]
+        if not sub or not any(r["pnp_ok"] for r in sub):
+            continue
+        out[f"{lo:g}-{hi:g}"] = {"name": name, "n": len(sub), **summarize(sub, cfg)}
+    return out
+
+
+def strata_md(st, n_total):
+    head = ("| GT 共线性档 | 帧数 | 占比 | kp PCK@3 | kp median | trans median | "
+            "usable@3cm/5° | 翻转率 |\n|---|---:|---:|---:|---:|---:|---:|---:|\n")
+    rows = "".join(
+        f"| {v['name']} {k} | {v['n']} | {v['n']/n_total*100:.1f}% | {v['kp_pck3']*100:.1f}% | "
+        f"{v['kp_px_median']:.2f} px | {v['trans_median']:.2f} cm | "
+        f"{v['usable'].get('3cm/5°', float('nan'))*100:.1f}% | {v['flip_rate']*100:.1f}% |\n"
+        for k, v in st.items())
+    return head + rows
+
+
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--data", type=Path, required=True)
@@ -65,11 +92,21 @@ def main():
     print("use  " + "   ".join(f"@{k} {v*100:.1f}%" for k, v in s["usable"].items()))
     print(f"tbl  median {s['table_median']:.2f}  p95 {fmt(s['table_p95'], ci.get('table_p95'), 'cm')}")
 
+    st = strata(records, cfg)
+    if st:
+        print("\n按 GT 共线性分档（PCA minor/major）")
+        print("  档位           帧数  占比   kpPCK@3  kp med   trans med  usable@3/5  flip")
+        for k, v in st.items():
+            print(f"  {v['name']:<6} {k:<9} {v['n']:>4}  {v['n']/len(records)*100:>4.1f}%  "
+                  f"{v['kp_pck3']*100:>6.1f}%  {v['kp_px_median']:>6.2f}px  "
+                  f"{v['trans_median']:>7.2f}cm  {v['usable'].get('3cm/5°', float('nan'))*100:>8.1f}%  "
+                  f"{v['flip_rate']*100:>5.1f}%")
+
     if args.out:
         args.out.mkdir(parents=True, exist_ok=True)
         (args.out / "result.json").write_text(
             json.dumps({"label": args.label, "summary": s, "ci95": ci,
-                        "per_frame": records}, ensure_ascii=False, indent=2),
+                        "strata": st, "per_frame": records}, ensure_ascii=False, indent=2),
             encoding="utf-8",
         )
         (args.out / "report.md").write_text(
@@ -89,6 +126,11 @@ def main():
             + "".join(f"| usable @{k} | {v*100:.1f}% | — |\n" for k, v in s["usable"].items())
             + f"| table median (cm) | {s['table_median']:.2f} | — |\n"
             f"| table p95 (cm) | {s['table_p95']:.2f} | {ci.get('table_p95')} |\n",
+            encoding="utf-8",
+        )
+        (args.out / "report.md").write_text(
+            (args.out / "report.md").read_text(encoding="utf-8")
+            + "\n## 按 GT 共线性分档\n\n" + strata_md(st, len(records)),
             encoding="utf-8",
         )
         print("saved", args.out)

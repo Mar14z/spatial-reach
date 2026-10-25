@@ -252,12 +252,13 @@ python scripts/train_keypoints.py --model resnet18 \
   --stride 4 --sigma 3.0 --eval-every 500 \
   --ckpt outputs/checkpoints/m0_kp9_resnet18.pth
 
-# 2b) 序列集训练（宽分布 + 退化，内存不足 4GB 时不要加 --cache）
+# 2b) 序列集训练（宽分布 + 退化；lr 必须衰减，否则末期在两个解之间来回跳）
+# --cache 实测无收益：1.0 step/s vs 无 cache 1.1 step/s，却多占 4.7GB
 python scripts/train_keypoints.py --model resnet18 \
   --train-root data/synthetic/m0_seq/train --val-root data/synthetic/m0_seq/val \
-  --steps 3200 --batch-size 64 --workers 2 --lr 3e-3 \
-  --stride 4 --sigma 3.0 --eval-every 400 --preprocess gamma \
-  --ckpt outputs/checkpoints/m0_seq_gamma.pth
+  --steps 3200 --batch-size 64 --workers 2 --lr 3e-3 --lr-schedule cosine \
+  --stride 4 --sigma 3.0 --eval-every 200 --preprocess gamma \
+  --ckpt outputs/checkpoints/m0_seq_cos.pth
 
 # 3) TensorBoard
 tensorboard --logdir outputs/tb
@@ -294,6 +295,9 @@ pytest -q
 - [x] **P0 误差预算**：主副本在 Obsidian `单目空间认知/工程文档/误差预算与PnP方案.md`。关键结论：**旋转误差才是瓶颈**——0.4m 处 5° 会放大成 3.5cm
 - [x] **P0 凸耳设计**：δ 扇扫定出 **≥3cm、推荐 5cm**（可用率 71.6%→80.0%）；`build_keypoint_urdf.py --lug-cm 5` 生成带凸耳 URDF。**δ≤1cm 反而更差**
 - [x] **P0 多帧兜底**：凸耳被遮挡时改走**多帧联合**（`solve_pnp_multiframe`）：相机不动、机械臂转 pan 5–30° 拍 2 帧，把各帧点集拼起来重解一次。`real` 口径 98.2%→**99.0–99.8%**，两帧全合成 **100%**。两个反直觉结论：① 跨帧仲裁（`select_candidate_multiframe`）基本无效——9 个错帧里 **8 帧的候选集根本没有正确答案**；② 必须多初值启动，单初值会陷局部极小（112°）
+- [x] **宽分布重训 + lr 余弦衰减**（`m0_seq_cos`）：同分布 seq_val 上 2D 关键点级 median **1.27px** / PCK@3 **88.0%** / 平移 median 1.92cm / 翻转 3.1% / usable@3cm·5° **74.4%**；lr 不衰减时同一配方只有 2.97px / 50.7% / 3.52cm / 7.8% / 39.4%。桌面反投影 median **0.87cm**，首次进 1cm
+- [x] **GT 关键点 PnP 上限**：GT 2D 直接喂 PnP，seq_val 与 OOD-hard 均 **100% 可用、0 翻转**，含 26% 近共线档也是 100% —— 共面镜像歧义在无噪声时不发作，与完美的差距**全部**来自 2D 误差
+- [x] **瓶颈换位**：按距离分箱，kp median 全距离段 1.12–1.20px 持平，但 usable 从 90.0%（0.45m）掉到 46.9%（0.75m）——瓶颈是**尺度**不是精度；翻转率与 `bias_v_max` 同向（0.39px→3.5%，1.68px→22.5%），是**偏差**不是噪声
 - [ ] M1：用凸耳 URDF 重生成数据 + 重训（会作废当前 checkpoint）
 - [ ] M1：真机多帧标定验证（当前 99.0–99.8% 是仿真 + 第 2 帧合成噪声，真机数字待实测）
 - [ ] M1：真机 10–20 帧 + ArUco 真值最小验证
