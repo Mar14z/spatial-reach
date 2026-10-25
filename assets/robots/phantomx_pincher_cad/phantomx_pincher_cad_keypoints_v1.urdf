@@ -1,0 +1,303 @@
+<?xml version="1.0" ?>
+<!-- 由 scripts/build_cad_urdf.py 从 PhantomX Pincher Mark II STEP/GLB 生成。
+     运动学来自 CAD 装配：link frame = 零件局部坐标系，joint origin = 父→子相对变换。
+     base_link 包含底座；base_footprint 把 CAD 的 Y-up 转成 Z-up。
+-->
+<robot name="phantomx_pincher_cad">
+  <link name="base_footprint"/>
+  <joint name="arm_base_joint" type="fixed">
+    <origin xyz="0 0 0" rpy="0 -0 -1.57079633"/>
+    <parent link="base_footprint"/>
+    <child link="base_link"/>
+  </joint>
+
+  <link name="base_link">
+    <inertial>
+      <mass value="0.3"/>
+      <origin xyz="0 0 0"/>
+      <inertia ixx="0.0001" ixy="0" ixz="0" iyy="0.0001" iyz="0" izz="0.0001"/>
+    </inertial>
+    <visual>
+      <origin xyz="0 0 0" rpy="0 0 0"/>
+      <geometry><mesh filename="parts/PincherBase.stl" scale="1.0 1.0 1.0"/></geometry>
+      <material name="grey"><color rgba="0.25 0.25 0.28 1"/></material>
+    </visual>
+    <collision>
+      <origin xyz="0 0 0" rpy="0 0 0"/>
+      <geometry><mesh filename="parts/PincherBase.stl" scale="1.0 1.0 1.0"/></geometry>
+    </collision>
+    <visual>
+      <origin xyz="0 0 0" rpy="0 0 0"/>
+      <geometry><mesh filename="parts/PincherBase_1.stl" scale="1.0 1.0 1.0"/></geometry>
+      <material name="grey"><color rgba="0.25 0.25 0.28 1"/></material>
+    </visual>
+    <collision>
+      <origin xyz="0 0 0" rpy="0 0 0"/>
+      <geometry><mesh filename="parts/PincherBase_1.stl" scale="1.0 1.0 1.0"/></geometry>
+    </collision>
+  </link>
+
+  <joint name="arm_shoulder_pan_joint" type="revolute">
+    <origin xyz="0.00007574 0.00007574 0.09437501" rpy="0 0 0"/>
+    <axis xyz="0 0 1"/>
+    <limit effort="6" lower="-1.74" upper="1.74" velocity="1.571"/>
+    <dynamics friction="0.13"/>
+    <parent link="base_link"/>
+    <child link="arm_shoulder_pan_link"/>
+  </joint>
+  <link name="arm_shoulder_pan_link">
+    <inertial>
+      <mass value="0.08"/>
+      <origin xyz="0 0 0"/>
+      <inertia ixx="0.0001" ixy="0" ixz="0" iyy="0.0001" iyz="0" izz="0.0001"/>
+    </inertial>
+    <visual>
+      <origin xyz="0 0 0" rpy="0 0 0"/>
+      <geometry><mesh filename="parts/Component1.stl" scale="1.0 1.0 1.0"/></geometry>
+      <material name="grey"><color rgba="0.22 0.22 0.25 1"/></material>
+    </visual>
+    <collision>
+      <origin xyz="0 0 0" rpy="0 0 0"/>
+      <geometry><mesh filename="parts/Component1.stl" scale="1.0 1.0 1.0"/></geometry>
+    </collision>
+  </link>
+
+  <joint name="arm_bicep_joint" type="revolute">
+    <origin xyz="-0.00000023 0 0.04149977" rpy="0 -0.78539816 0"/>
+    <axis xyz="0 1 -0"/>
+    <limit effort="6" lower="-1.98" upper="1.88" velocity="1.571"/>
+    <dynamics friction="0.13"/>
+    <parent link="arm_shoulder_pan_link"/>
+    <child link="arm_bicep_link"/>
+  </joint>
+  <link name="arm_bicep_link">
+    <inertial>
+      <mass value="0.1"/>
+      <origin xyz="0 0 0"/>
+      <inertia ixx="0.0001" ixy="0" ixz="0" iyy="0.0001" iyz="0" izz="0.0001"/>
+    </inertial>
+    <visual>
+      <origin xyz="0 0 0" rpy="0 0 0"/>
+      <geometry><mesh filename="parts/LowerArm_v2.stl" scale="1.0 1.0 1.0"/></geometry>
+      <material name="grey"><color rgba="0.6 0.6 0.62 1"/></material>
+    </visual>
+    <collision>
+      <origin xyz="0 0 0" rpy="0 0 0"/>
+      <geometry><mesh filename="parts/LowerArm_v2.stl" scale="1.0 1.0 1.0"/></geometry>
+    </collision>
+  </link>
+
+  <joint name="arm_forearm_joint" type="revolute">
+    <origin xyz="0.00000023 0 0.10700023" rpy="-3.14159265 0.78539816 -3.14159265"/>
+    <axis xyz="-0 1 0"/>
+    <limit effort="6" lower="-1.58" upper="0.59" velocity="1.571"/>
+    <dynamics friction="0.13"/>
+    <parent link="arm_bicep_link"/>
+    <child link="arm_forearm_link"/>
+  </joint>
+  <link name="arm_forearm_link">
+    <inertial>
+      <mass value="0.08"/>
+      <origin xyz="0 0 0"/>
+      <inertia ixx="0.0001" ixy="0" ixz="0" iyy="0.0001" iyz="0" izz="0.0001"/>
+    </inertial>
+    <visual>
+      <origin xyz="0 0 0" rpy="0 0 0"/>
+      <geometry><mesh filename="parts/UpperArm_v2.stl" scale="1.0 1.0 1.0"/></geometry>
+      <material name="grey"><color rgba="0.68 0.68 0.7 1"/></material>
+    </visual>
+    <collision>
+      <origin xyz="0 0 0" rpy="0 0 0"/>
+      <geometry><mesh filename="parts/UpperArm_v2.stl" scale="1.0 1.0 1.0"/></geometry>
+    </collision>
+  </link>
+
+  <joint name="arm_wrist_flex_joint" type="revolute">
+    <origin xyz="-0.00025427 -0 0.107" rpy="-0 0 0"/>
+    <axis xyz="-0 1 0"/>
+    <limit effort="6" lower="-1.79" upper="1.67" velocity="1.571"/>
+    <dynamics friction="0.13"/>
+    <parent link="arm_forearm_link"/>
+    <child link="arm_wrist_flex_link"/>
+  </joint>
+  <link name="arm_wrist_flex_link">
+    <inertial>
+      <mass value="0.06"/>
+      <origin xyz="0 0 0"/>
+      <inertia ixx="0.0001" ixy="0" ixz="0" iyy="0.0001" iyz="0" izz="0.0001"/>
+    </inertial>
+    <visual>
+      <origin xyz="0 0 0" rpy="0 0 0"/>
+      <geometry><mesh filename="parts/GripperBody_v4.stl" scale="1.0 1.0 1.0"/></geometry>
+      <material name="grey"><color rgba="0.3 0.3 0.33 1"/></material>
+    </visual>
+    <collision>
+      <origin xyz="0 0 0" rpy="0 0 0"/>
+      <geometry><mesh filename="parts/GripperBody_v4.stl" scale="1.0 1.0 1.0"/></geometry>
+    </collision>
+  </link>
+
+  <joint name="gripper_joint" type="prismatic">
+    <origin xyz="0.00036977 0.02834429 0.07158491" rpy="-0 0 3.14159265"/>
+    <axis xyz="0 -1 -0"/>
+    <limit effort="30" lower="0.002" upper="0.032" velocity="0.5"/>
+    <parent link="arm_wrist_flex_link"/>
+    <child link="gripper_active_link"/>
+  </joint>
+  <link name="gripper_active_link">
+    <inertial>
+      <mass value="0.01"/>
+      <origin xyz="0 0 0"/>
+      <inertia ixx="0.0001" ixy="0" ixz="0" iyy="0.0001" iyz="0" izz="0.0001"/>
+    </inertial>
+    <visual>
+      <origin xyz="0 0 0" rpy="0 0 0"/>
+      <geometry><mesh filename="parts/LeftFinger_v2.stl" scale="1.0 1.0 1.0"/></geometry>
+      <material name="grey"><color rgba="0.15 0.15 0.15 1"/></material>
+    </visual>
+    <collision>
+      <origin xyz="0 0 0" rpy="0 0 0"/>
+      <geometry><mesh filename="parts/LeftFinger_v2.stl" scale="1.0 1.0 1.0"/></geometry>
+    </collision>
+  </link>
+
+  <joint name="gripper2_joint" type="fixed">
+    <origin xyz="0.00036977 -0.02849576 0.07158491" rpy="0 -0 0"/>
+    <parent link="arm_wrist_flex_link"/>
+    <child link="gripper_active2_link"/>
+  </joint>
+  <link name="gripper_active2_link">
+    <inertial>
+      <mass value="0.01"/>
+      <origin xyz="0 0 0"/>
+      <inertia ixx="0.0001" ixy="0" ixz="0" iyy="0.0001" iyz="0" izz="0.0001"/>
+    </inertial>
+    <visual>
+      <origin xyz="0 0 0" rpy="0 0 0"/>
+      <geometry><mesh filename="parts/LeftFinger_v2_1.stl" scale="1.0 1.0 1.0"/></geometry>
+      <material name="grey"><color rgba="0.15 0.15 0.15 1"/></material>
+    </visual>
+    <collision>
+      <origin xyz="0 0 0" rpy="0 0 0"/>
+      <geometry><mesh filename="parts/LeftFinger_v2_1.stl" scale="1.0 1.0 1.0"/></geometry>
+    </collision>
+  </link>
+
+  <link name="kp_base">
+    <visual>
+      <origin xyz="0 0 0" rpy="0 0 0"/>
+      <geometry><sphere radius="0.018"/></geometry>
+      <material name="kp_base_mat"><color rgba="0.90 0.15 0.15 1.0"/></material>
+    </visual>
+  </link>
+  <joint name="kp_base_joint" type="fixed">
+    <origin xyz="0 0 0.02" rpy="0 0 0"/>
+    <parent link="base_link"/>
+    <child link="kp_base"/>
+  </joint>
+
+  <link name="kp_shoulder_pan">
+    <visual>
+      <origin xyz="0 0 0" rpy="0 0 0"/>
+      <geometry><cylinder radius="0.018" length="0.006"/></geometry>
+      <material name="kp_shoulder_pan_mat"><color rgba="0.15 0.75 0.25 1.0"/></material>
+    </visual>
+  </link>
+  <joint name="kp_shoulder_pan_joint" type="fixed">
+    <origin xyz="0 0 0" rpy="0 0 0"/>
+    <parent link="arm_shoulder_pan_link"/>
+    <child link="kp_shoulder_pan"/>
+  </joint>
+
+  <link name="kp_shoulder_lift">
+    <visual>
+      <origin xyz="0 0 0" rpy="0 0 0"/>
+      <geometry><cylinder radius="0.03" length="0.008"/></geometry>
+      <material name="kp_shoulder_lift_mat"><color rgba="0.15 0.35 0.90 1.0"/></material>
+    </visual>
+  </link>
+  <joint name="kp_shoulder_lift_joint" type="fixed">
+    <origin xyz="0 0 0.015" rpy="0 0 0"/>
+    <parent link="arm_bicep_link"/>
+    <child link="kp_shoulder_lift"/>
+  </joint>
+
+  <link name="kp_upper_mid">
+    <visual>
+      <origin xyz="0 0 0" rpy="0 0 0"/>
+      <geometry><cylinder radius="0.028" length="0.008"/></geometry>
+      <material name="kp_upper_mid_mat"><color rgba="1.00 0.50 0.10 1.0"/></material>
+    </visual>
+  </link>
+  <joint name="kp_upper_mid_joint" type="fixed">
+    <origin xyz="0 0 0.0535" rpy="0 0 0"/>
+    <parent link="arm_bicep_link"/>
+    <child link="kp_upper_mid"/>
+  </joint>
+
+  <link name="kp_elbow">
+    <visual>
+      <origin xyz="0 0 0" rpy="0 0 0"/>
+      <geometry><cylinder radius="0.03" length="0.008"/></geometry>
+      <material name="kp_elbow_mat"><color rgba="0.90 0.80 0.15 1.0"/></material>
+    </visual>
+  </link>
+  <joint name="kp_elbow_joint" type="fixed">
+    <origin xyz="0 0 0.015" rpy="0 0 0"/>
+    <parent link="arm_forearm_link"/>
+    <child link="kp_elbow"/>
+  </joint>
+
+  <link name="kp_forearm_mid">
+    <visual>
+      <origin xyz="0 0 0" rpy="0 0 0"/>
+      <geometry><cylinder radius="0.028" length="0.008"/></geometry>
+      <material name="kp_forearm_mid_mat"><color rgba="0.55 0.20 0.85 1.0"/></material>
+    </visual>
+  </link>
+  <joint name="kp_forearm_mid_joint" type="fixed">
+    <origin xyz="0 0 0.0535" rpy="0 0 0"/>
+    <parent link="arm_forearm_link"/>
+    <child link="kp_forearm_mid"/>
+  </joint>
+
+  <link name="kp_wrist">
+    <visual>
+      <origin xyz="0 0 0" rpy="0 0 0"/>
+      <geometry><cylinder radius="0.028" length="0.008"/></geometry>
+      <material name="kp_wrist_mat"><color rgba="0.80 0.15 0.80 1.0"/></material>
+    </visual>
+  </link>
+  <joint name="kp_wrist_joint" type="fixed">
+    <origin xyz="0 0 0.012" rpy="0 0 0"/>
+    <parent link="arm_wrist_flex_link"/>
+    <child link="kp_wrist"/>
+  </joint>
+
+  <link name="kp_wrist_mid">
+    <visual>
+      <origin xyz="0 0 0" rpy="0 0 0"/>
+      <geometry><cylinder radius="0.022" length="0.006"/></geometry>
+      <material name="kp_wrist_mid_mat"><color rgba="0.10 0.60 0.50 1.0"/></material>
+    </visual>
+  </link>
+  <joint name="kp_wrist_mid_joint" type="fixed">
+    <origin xyz="0.00036977 0 0.0358" rpy="0 0 0"/>
+    <parent link="arm_wrist_flex_link"/>
+    <child link="kp_wrist_mid"/>
+  </joint>
+
+  <link name="kp_gripper_base">
+    <visual>
+      <origin xyz="0 0 0" rpy="0 0 0"/>
+      <geometry><sphere radius="0.018"/></geometry>
+      <material name="kp_gripper_base_mat"><color rgba="0.15 0.80 0.80 1.0"/></material>
+    </visual>
+  </link>
+  <joint name="kp_gripper_base_joint" type="fixed">
+    <origin xyz="0.00036977 0 0.07158491" rpy="0 0 0"/>
+    <parent link="arm_wrist_flex_link"/>
+    <child link="kp_gripper_base"/>
+  </joint>
+
+</robot>

@@ -22,7 +22,7 @@ sys.path.insert(0, str(ROOT))
 
 from touch.sim.camera import intrinsics_from_fov, project_base_points
 
-URDF = ROOT / "assets/robots/phantomx_pincher_cad/phantomx_pincher_cad.urdf"
+URDF = ROOT / "assets/robots/phantomx_pincher_cad/phantomx_pincher_cad_keypoints.urdf"
 OUT = ROOT / "outputs/renders"
 
 POSE = {
@@ -100,15 +100,27 @@ def annotate(img: Image.Image, bid: int, links: dict) -> Image.Image:
     _, yaw, pitch, dist, target = VIEWS[0]
     view, _ = camera_matrices(yaw, pitch, dist, target)
     r_cb, t_cb = opencv_extrinsics(view)
-    base_name = "base_link" if "base_link" in links else "arm_base_link"
-    points = [
-        ("基座", links[base_name]),
-        ("肩 pan", links["arm_shoulder_pan_link"]),
-        ("肩 lift", links["arm_bicep_link"]),
-        ("肘", links["arm_forearm_link"]),
-        ("腕 flex", links["arm_wrist_flex_link"]),
-        ("夹爪", links["gripper_active_link"]),
+    kp_names = [
+        "kp_base",
+        "kp_shoulder_pan",
+        "kp_shoulder_lift",
+        "kp_elbow",
+        "kp_wrist",
+        "kp_gripper_base",
     ]
+    if all(name in links for name in kp_names):
+        labels = ["基座", "肩 pan", "肩 lift", "肘", "腕 flex", "夹爪基座"]
+        points = [(label, links[name]) for label, name in zip(labels, kp_names)]
+    else:
+        base_name = "base_link" if "base_link" in links else "arm_base_link"
+        points = [
+            ("基座", links[base_name]),
+            ("肩 pan", links["arm_shoulder_pan_link"]),
+            ("肩 lift", links["arm_bicep_link"]),
+            ("肘", links["arm_forearm_link"]),
+            ("腕 flex", links["arm_wrist_flex_link"]),
+            ("夹爪", links["gripper_active_link"]),
+        ]
     positions = np.array(
         [p.getLinkState(bid, link_idx)[4] for _, link_idx in points]
     )

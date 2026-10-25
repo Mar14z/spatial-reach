@@ -1,13 +1,16 @@
 """生成 M0 合成帧：RGB、深度、分割、2D keypoints 真值。
 
+相机与真实 Ace Pro 的**模型输入**对齐：
+- 真实相机 1280×720 内参从 configs/camera_intrinsics.yaml 读取
+- 中心裁 4:3 再缩放到 640×480
+- 直接用裁切后的 K 在 640×480 上渲染，等价于真实模型输入
+
 用法：
     conda activate arm_sim
     python scripts/generate_frames.py --frames 10 --seed 0
-    python scripts/generate_frames.py --frames 100 --seed 10 \
-        --out data/synthetic/m0/train --yaw-min 0 --yaw-max 270 --no-depth
-    python scripts/generate_frames.py --frames 20 --seed 20 \
-        --out data/synthetic/m0/val --yaw-min 270 --yaw-max 360 \
-        --dist-min 0.65 --dist-max 0.85 --no-depth
+    python scripts/generate_frames.py --frames 2000 --seed 500 \
+        --out data/synthetic/m0_kp9/train --yaw-min 0 --yaw-max 360 \
+        --dist-min 0.35 --dist-max 0.60 --pitch-min -25 --pitch-max -5 --no-depth
 """
 
 import argparse
@@ -22,16 +25,20 @@ from PIL import Image, ImageDraw, ImageFont
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
 
+from touch.camera import load_intrinsics, model_intrinsics
 from touch.sim.renderer import (
     opencv_extrinsics_from_view,
     project_link_keypoints,
     render_frame,
 )
 
-URDF = ROOT / "assets/robots/phantomx_pincher_cad/phantomx_pincher_cad.urdf"
+URDF = ROOT / "assets/robots/phantomx_pincher_cad/phantomx_pincher_cad_keypoints.urdf"
 OUT = ROOT / "data/synthetic/m0"
 
-W, H, FOV = 640, 480, 60
+INTR_FULL = load_intrinsics(ROOT / "configs/camera_intrinsics.yaml")
+INTR = model_intrinsics(INTR_FULL, 640, 480)
+W, H = INTR.width, INTR.height
+K = INTR.K
 NEAR, FAR = 0.01, 5.0
 
 JOINT_RANGES = {
@@ -50,10 +57,17 @@ KEYPOINT_LINKS = [
     "gripper_active_link",
 ]
 
-
-def keypoint_link_names(link_idx):
-    base = "base_link" if "base_link" in link_idx else "arm_base_link"
-    return [base, *KEYPOINT_LINKS]
+KP_LINK_NAMES = [
+    "kp_base",
+    "kp_shoulder_pan",
+    "kp_shoulder_lift",
+    "kp_upper_mid",
+    "kp_elbow",
+    "kp_forearm_mid",
+    "kp_wrist",
+    "kp_base_left",
+    "kp_base_right",
+]
 
 COLORS = {
     "arm_base_link": [0.20, 0.20, 0.23, 1.0],
@@ -61,8 +75,8 @@ COLORS = {
     "arm_bicep_link": [0.62, 0.62, 0.65, 1.0],
     "arm_forearm_link": [0.62, 0.62, 0.65, 1.0],
     "arm_wrist_flex_link": [0.20, 0.20, 0.23, 1.0],
-    "gripper_active_link": [0.22, 0.22, 0.22, 1.0],
-    "gripper_active2_link": [0.22, 0.22, 0.22, 1.0],
+    "gripper_active_link": [0.85, 0.15, 0.15, 1.0],
+    "gripper_active2_link": [0.15, 0.70, 0.30, 1.0],
 }
 
 TABLE_COLORS = [
@@ -72,6 +86,18 @@ TABLE_COLORS = [
     [0.35, 0.50, 0.35, 1.0],
     [0.65, 0.60, 0.45, 1.0],
 ]
+
+
+def keypoint_link_names(link_idx, override=None):
+    if override:
+        missing = [n for n in override if n not in link_idx]
+        if missing:
+            raise ValueError(f"URDF 缺少关键点 link: {missing}")
+        return override
+    if all(name in link_idx for name in KP_LINK_NAMES):
+        return KP_LINK_NAMES
+    base = "base_link" if "base_link" in link_idx else "arm_base_link"
+    return [base, *KEYPOINT_LINKS]
 
 
 def setup(rng, urdf_path):
@@ -141,7 +167,7 @@ def sample_view(bid, link_idx, rng, args, max_tries=100):
             upAxisIndex=2,
         )
         _, _, uv, valid, _ = project_link_keypoints(
-            bid, link_idx, W, H, FOV, view
+            bid, link_idx, W, H, 0.0, view, K=K
         )
         inside = (
             (uv[:, 0] >= 10)
@@ -196,14 +222,33 @@ def main():
     parser.add_argument("--dist-min", type=float, default=0.45)
     parser.add_argument("--dist-max", type=float, default=0.65)
     parser.add_argument("--no-depth", action="store_true")
+    parser.add_argument(
+        "--kp-names",
+        type=str,
+        default=None,
+        help="逗号分隔的 keypoint link 名单，默认用内置 9 点",
+    )
+    parser.add_argument(
+        "--finger-colors",
+        choices=["black", "split"],
+        default="split",
+        help="夹爪配色：split=红绿（新数据默认），black=与旧 checkpoint 一致",
+    )
     parser.add_argument("--urdf", type=Path, default=URDF)
     args = parser.parse_args()
+    if args.finger_colors == "black":
+        COLORS["gripper_active_link"] = [0.22, 0.22, 0.22, 1.0]
+        COLORS["gripper_active2_link"] = [0.22, 0.22, 0.22, 1.0]
 
     rng = np.random.default_rng(args.seed)
     args.out.mkdir(parents=True, exist_ok=True)
     bid, joint_idx, link_idx, table_id = setup(rng, args.urdf)
     link_subset = {
-        name: link_idx[name] for name in keypoint_link_names(link_idx)
+        name: link_idx[name]
+        for name in keypoint_link_names(
+            link_idx,
+            args.kp_names.split(",") if args.kp_names else None,
+        )
     }
 
     for frame_id in range(args.frames):
@@ -217,18 +262,20 @@ def main():
         rgb, depth, seg = render_frame(
             W,
             H,
-            FOV,
+            0.0,
             view,
             NEAR,
             FAR,
+            K=K,
+            shadow=0,
             light_direction=light["direction"],
             light_color=light["color"],
             ambient=light["ambient"],
             diffuse=light["diffuse"],
             specular=light["specular"],
         )
-        names, points3d, uv, valid, k = project_link_keypoints(
-            bid, link_subset, W, H, FOV, view
+        names, points3d, uv, valid, _ = project_link_keypoints(
+            bid, link_subset, W, H, 0.0, view, K=K
         )
         assert valid.all()
 
@@ -248,7 +295,13 @@ def main():
             "seed": args.seed,
             "width": W,
             "height": H,
-            "fov_deg": FOV,
+            "K": K.tolist(),
+            "K_full": INTR_FULL.K.tolist(),
+            "full_width": INTR_FULL.width,
+            "full_height": INTR_FULL.height,
+            "camera_model": "pinhole",
+            "distortion_applied": False,
+            "intrinsics_source": "Ace Pro 1280x720 center-crop 4:3 -> 640x480",
             "near": NEAR,
             "far": FAR,
             "camera": {
@@ -260,7 +313,6 @@ def main():
             "light": light,
             "table_color": table_color,
             "view_matrix": [float(x) for x in view],
-            "K": k.tolist(),
             "R_cb": r_cb.tolist(),
             "t_cb": t_cb.tolist(),
             "joints": pose,

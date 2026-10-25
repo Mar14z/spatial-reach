@@ -20,3 +20,4 @@ onnx
 
 # 可视化
 matplotlib
+tensorboard

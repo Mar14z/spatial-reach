@@ -5,7 +5,11 @@ from __future__ import annotations
 import numpy as np
 import pybullet as p
 
-from touch.sim.camera import intrinsics_from_fov, project_base_points
+from touch.sim.camera import (
+    intrinsics_from_fov,
+    project_base_points,
+    projection_from_intrinsics,
+)
 
 
 def opencv_extrinsics_from_view(
@@ -24,6 +28,8 @@ def render_frame(
     view: list[float],
     near: float = 0.01,
     far: float = 5.0,
+    K: np.ndarray | None = None,
+    shadow: int = 1,
     light_direction: tuple[float, float, float] = (0.4, -0.6, 1.0),
     light_color: tuple[float, float, float] = (1.0, 1.0, 1.0),
     ambient: float = 0.75,
@@ -31,9 +37,12 @@ def render_frame(
     specular: float = 0.25,
 ) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
     """返回 (rgb, depth_m, seg)。"""
-    proj = p.computeProjectionMatrixFOV(
-        fov=fov_deg, aspect=width / height, nearVal=near, farVal=far
-    )
+    if K is None:
+        proj = p.computeProjectionMatrixFOV(
+            fov=fov_deg, aspect=width / height, nearVal=near, farVal=far
+        )
+    else:
+        proj = projection_from_intrinsics(K, width, height, near, far)
     _, _, rgb, depth, seg = p.getCameraImage(
         width,
         height,
@@ -43,7 +52,7 @@ def render_frame(
         lightDirection=light_direction,
         lightColor=light_color,
         lightDistance=2.0,
-        shadow=1,
+        shadow=shadow,
         lightAmbientCoeff=ambient,
         lightDiffuseCoeff=diffuse,
         lightSpecularCoeff=specular,
@@ -62,6 +71,7 @@ def project_link_keypoints(
     height: int,
     fov_deg: float,
     view: list[float],
+    K: np.ndarray | None = None,
 ) -> tuple[list[str], np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
     """返回 (link 名, 3D base 点, 2D 像素, valid, K)。"""
     names = list(link_indices)
@@ -70,6 +80,10 @@ def project_link_keypoints(
         dtype=np.float64,
     )
     r_cb, t_cb = opencv_extrinsics_from_view(view)
-    k = intrinsics_from_fov(width, height, fov_deg)
+    k = (
+        intrinsics_from_fov(width, height, fov_deg)
+        if K is None
+        else np.asarray(K, dtype=np.float64)
+    )
     uv, valid = project_base_points(k, r_cb, t_cb, points_base)
     return names, points_base, uv, valid, k
