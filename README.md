@@ -254,10 +254,12 @@ pytest -q
 - [x] 9 点外抱环标记（D 组）+ gamma 预处理：test 500 帧 2D median 2.03px / PCK@3 81.4% / 平移 median 2.00cm / p95 7.58cm / 翻转 14 帧
 - [x] PnP 误差分解（6 点 100 帧）：误差是**双峰**——`rot<5°` 的 46/100 帧平移 p50 仅 1.96cm；翻转与 `|pan|` 无关（corr 0.18）；`gt_5`（完美 2D 只少 1 点）仍翻转 1/100
 - [x] 工作区减法：移除 11 个 1 行占位模块与 2 个未被引用的 config；一次性脚本/日志归档至 `outputs/_archive/`；评测入口上移为 `scripts/ablation_report.py`
-- [ ] **P0 打破共面**：把 2 个标记移出臂平面 2–3cm（当前 9 点离面散布仅 0.02mm）
-- [ ] **P0 求解器**：`solve_pnp` 默认 ITERATIVE → SQPNP，并显式枚举双解（ITERATIVE 在近共面点上是灾难：rot 中位 151°）
-- [ ] **P0 指标**：一级指标从中位误差改为「翻转率 + 可用帧率」
-- [ ] M1：误差预算表（夹爪容差 → 允许位姿误差）
+- [x] **P0 求解器**：`solve_pnp` 默认改 SQPNP；新增 `solve_pnp_candidates`（IPPE+SQPNP 多候选）与 `select_candidate`（物理先验）。翻转 14→9/500，但 14 个翻转帧里只有 6 帧的正确解在候选集中 → 选解不是瓶颈，几何才是
+- [x] **P0 指标**：一级指标改为 `flip_rate` + `usable@容差`，`scripts/ablation_report.py` 已输出
+- [x] **P0 误差预算**：[docs/error-budget.md](docs/error-budget.md)。关键结论：**旋转误差才是瓶颈**——0.4m 处 5° 会放大成 3.5cm
+- [x] **P0 凸耳设计**：δ 扇扫定出 **≥3cm、推荐 5cm**（可用率 71.6%→80.0%）；`build_keypoint_urdf.py --lug-cm 5` 生成带凸耳 URDF。**δ≤1cm 反而更差**
+- [ ] **P0 待决策**：两个凸耳都被遮挡时（歧义 7/200 且与 δ 无关），兜底用多帧一致性还是拒答挪相机
+- [ ] M1：用凸耳 URDF 重生成数据 + 重训（会作废当前 checkpoint）
 - [ ] M1：真机 10–20 帧 + ArUco 真值最小验证
 - [ ] M2：空间认知层
 - [ ] M3：闭环抓取
