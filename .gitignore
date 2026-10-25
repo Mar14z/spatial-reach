@@ -28,7 +28,6 @@ Thumbs.db
 # 本地教学 / 协作文件（不入库）
 .qoder/
 AGENTS.md
-docs/learning/
 5_轴机械臂项目推荐_*.md
 
 # 文档不入库：主副本在 Obsidian vault (D:\documents\note)
@@ -40,8 +39,6 @@ docs/learning/
 assets/robots/phantomx_pincher_arm/
 assets/robots/phantomx_pincher_cad/pincher.step.glb
 assets/robots/phantomx_pincher_cad/pincher_assembly.obj
-docs/assets/pincher/
-docs/assets/calibration/
 
 # 缓存
 .pytest_cache/
