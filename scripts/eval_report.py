@@ -18,6 +18,7 @@ ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
 
 from touch.learning.evaluate import (
+    apply_sequence_solve,
     bootstrap_ci,
     evaluate_frames,
     load_predictions,
@@ -59,6 +60,11 @@ def strata_md(st, n_total):
     return head + rows
 
 
+def clean(records):
+    """丢掉 `_` 开头的中间量（PnP 原始解、点集），它们只给序列联解用。"""
+    return [{k: v for k, v in r.items() if not k.startswith("_")} for r in records]
+
+
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--data", type=Path, required=True)
@@ -67,6 +73,11 @@ def main():
     ap.add_argument("--extra", type=Path, default=None, help="额外点标签 npz")
     ap.add_argument("--out", type=Path, default=None)
     ap.add_argument("--bootstrap", type=int, default=1000)
+    ap.add_argument(
+        "--sequence-solve",
+        action="store_true",
+        help="同一序列多帧联合重解相机位姿（要求序列内相机不动）",
+    )
     args = ap.parse_args()
 
     frames, _ = load_predictions(args.pred)
@@ -75,6 +86,9 @@ def main():
         z = np.load(args.extra)
         extra = {str(n): (u, x) for n, u, x in zip(z["frames"], z["uv"], z["xyz"])}
     records, cfg = evaluate_frames(args.data, frames, extra)
+    if args.sequence_solve:
+        n_changed = apply_sequence_solve(records, args.data, cfg)
+        print(f"序列联解：改写 {n_changed} 帧的翻转判定")
     s = summarize(records, cfg)
     ci = bootstrap_ci(records, n=args.bootstrap) if args.bootstrap else {}
 
@@ -106,7 +120,7 @@ def main():
         args.out.mkdir(parents=True, exist_ok=True)
         (args.out / "result.json").write_text(
             json.dumps({"label": args.label, "summary": s, "ci95": ci,
-                        "strata": st, "per_frame": records}, ensure_ascii=False, indent=2),
+                        "strata": st, "per_frame": clean(records)}, ensure_ascii=False, indent=2),
             encoding="utf-8",
         )
         (args.out / "report.md").write_text(

@@ -94,6 +94,71 @@
     },
     "created": "2026-10-25"
   },
+  "m0_ood_seq": {
+    "purpose": "序列版分布外测试集：与 m0_ood 同配方，区别是同序列相机/桌面/光照固定、只转 pan。用于验证序列联解（时序兜底）在域外还剩多少增益。只有 50 个视角（200 帧 / 4），绝对数字不可与 m0_ood 的 200 个独立视角直接比",
+    "split": "test",
+    "urdf": "assets/robots/phantomx_pincher_cad/phantomx_pincher_cad_keypoints_v1.urdf",
+    "keypoints": [
+      "kp_base",
+      "kp_shoulder_pan",
+      "kp_shoulder_lift",
+      "kp_upper_mid",
+      "kp_elbow",
+      "kp_forearm_mid",
+      "kp_wrist",
+      "kp_wrist_mid",
+      "kp_gripper_base"
+    ],
+    "sequence": {
+      "len": 4,
+      "pan_span_deg": 30,
+      "pan_step_deg": 10
+    },
+    "subsets": {
+      "mild": {
+        "frames": 200,
+        "seeds": [
+          9000
+        ],
+        "camera": {
+          "dist_m": [0.65, 0.78],
+          "pitch_deg": [-35, -20],
+          "yaw_deg": [0, 360]
+        },
+        "light": {
+          "y": [-1.0, -0.2]
+        },
+        "render": {
+          "shadow": 1,
+          "noise_sigma": 2.0,
+          "blur": false,
+          "jpeg_q": 75
+        }
+      },
+      "hard": {
+        "frames": 200,
+        "seeds": [
+          9100
+        ],
+        "camera": {
+          "dist_m": [0.85, 0.95],
+          "pitch_deg": [-55, -6],
+          "yaw_deg": [0, 360]
+        },
+        "light": {
+          "y": [0.2, 0.6],
+          "note": "逆光，与训练集方向相反"
+        },
+        "render": {
+          "shadow": 1,
+          "noise_sigma": 3.0,
+          "blur": true,
+          "jpeg_q": 60
+        }
+      }
+    },
+    "created": "2026-10-26"
+  },
   "m0_plain": {
     "purpose": "无标记 6 点基线（同规格消融 A 档）",
     "split": "train+val",

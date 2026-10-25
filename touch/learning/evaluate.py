@@ -19,7 +19,7 @@ import cv2
 import numpy as np
 
 from touch.perception.geometry import backproject_to_plane, pose_error
-from touch.perception.pose import solve_pnp
+from touch.perception.pose import solve_pnp, solve_pnp_sequence
 
 PROTOCOL = {
     "solver": cv2.SOLVEPNP_SQPNP,
@@ -91,6 +91,7 @@ def evaluate_frames(data_dir, pred_frames, extra=None, cfg=None):
             "max_bias_v": float(np.abs((p2 - gt)[:, 1].mean())),
             "spread2d": float(s2[1] / s2[0]) if len(gt) > 2 else np.nan,
             "pnp_ok": False,
+            "_seq": meta.get("sequence"),
         }
         try:
             R, t, _ = solve_pnp(K, p3, p2, cfg["reproj_threshold_px"], False, cfg["solver"])
@@ -101,6 +102,11 @@ def evaluate_frames(data_dir, pred_frames, extra=None, cfg=None):
                 "rot_deg": rot,
                 "flip": bool(rot > cfg["flip_deg"]),
                 "table_cm": _table_error(K, R, t, R_gt, t_gt, cfg),
+                "_R": [float(v) for v in np.asarray(R).ravel()],
+                "_t": [float(v) for v in np.asarray(t).ravel()],
+                "_K": K.tolist(),
+                "_p3": p3.tolist(),
+                "_p2": p2.tolist(),
             })
         except Exception as exc:
             rec["error"] = str(exc)
@@ -112,6 +118,45 @@ def _stack(records, key):
     """把每帧的逐点向量堆成 (帧数, 点数)；字段缺失时返回 None。"""
     rows = [np.asarray(r[key], dtype=np.float64) for r in records if key in r]
     return np.stack(rows) if rows else None
+
+
+def apply_sequence_solve(records, data_dir, cfg=None):
+    """用同一序列的多帧联合重解相机位姿，覆写单帧结果（原地修改）。
+
+    前提是序列内相机不动（生成端 k==0 时一次性定下 view）。返回被改写的帧数、
+    联合解与单帧解不一致的帧数、以及按序列统计的翻转变化。
+    """
+    cfg = PROTOCOL if cfg is None else cfg
+    groups: dict = {}
+    for i, r in enumerate(records):
+        if r["pnp_ok"] and r.get("_seq") is not None:
+            groups.setdefault(r["_seq"], []).append(i)
+    changed = 0
+    for _, idx in groups.items():
+        if len(idx) < 2:
+            continue
+        obs = [(records[i]["_p3"], np.asarray(records[i]["_p2"], np.float64)) for i in idx]
+        seeds = [(np.asarray(records[i]["_R"]).reshape(3, 3), np.asarray(records[i]["_t"])) for i in idx]
+        K = np.asarray(records[idx[0]]["_K"], np.float64).reshape(3, 3)
+        try:
+            R, t, _, _ = solve_pnp_sequence(K, obs, seeds)
+        except Exception:
+            continue
+        for i in idx:
+            meta = json.loads((Path(data_dir) / records[i]["frame"] / "meta.json").read_text(encoding="utf-8"))
+            R_gt = np.asarray(meta["R_cb"], np.float64)
+            t_gt = np.asarray(meta["t_cb"], np.float64)
+            trans, rot = pose_error(R, t, R_gt, t_gt)
+            if bool(rot > cfg["flip_deg"]) != records[i]["flip"]:
+                changed += 1
+            records[i].update({
+                "trans_cm": trans,
+                "rot_deg": rot,
+                "flip": bool(rot > cfg["flip_deg"]),
+                "table_cm": _table_error(K, R, t, R_gt, t_gt, cfg),
+                "_seq_solved": True,
+            })
+    return changed
 
 
 def summarize(records, cfg=None):
