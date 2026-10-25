@@ -144,13 +144,21 @@ def setup(rng, urdf_path):
     return bid, joint_idx, link_idx, table_id
 
 
-def set_random_pose(bid, joint_idx, rng):
+def set_random_pose(bid, joint_idx, rng, exclude=()):
     pose = {}
     for name, (low, high) in JOINT_RANGES.items():
+        if name in exclude:
+            continue
         q = float(rng.uniform(low, high))
         p.resetJointState(bid, joint_idx[name], q)
         pose[name] = q
     return pose
+
+
+def apply_pose(bid, joint_idx, pose):
+    """把一整套关节角设进仿真（序列集里每帧切一次姿态用）。"""
+    for name, q in pose.items():
+        p.resetJointState(bid, joint_idx[name], q)
 
 
 def randomize_light(rng, x_range=(-0.5, 0.8), y_range=(-1.0, -0.2)):
@@ -169,7 +177,12 @@ def randomize_light(rng, x_range=(-0.5, 0.8), y_range=(-1.0, -0.2)):
     }
 
 
-def sample_view(bid, link_idx, rng, args, max_tries=100):
+def sample_view(bid, joint_idx, link_idx, rng, args, poses=None, max_tries=200):
+    """采一个相机位姿。
+
+    poses 给了多套关节角时，要求每一套下所有 keypoint 都落在画面内才接受。
+    序列集靠这个保证「同一台相机能拍完整个序列」，否则后面的帧会出画。
+    """
     for _ in range(max_tries):
         yaw = float(rng.uniform(args.yaw_min, args.yaw_max))
         pitch = float(rng.uniform(args.pitch_min, args.pitch_max))
@@ -183,16 +196,23 @@ def sample_view(bid, link_idx, rng, args, max_tries=100):
             roll=0,
             upAxisIndex=2,
         )
-        _, _, uv, valid, _ = project_link_keypoints(
-            bid, link_idx, W, H, 0.0, view, K=K
-        )
-        inside = (
-            (uv[:, 0] >= 10)
-            & (uv[:, 0] < W - 10)
-            & (uv[:, 1] >= 10)
-            & (uv[:, 1] < H - 10)
-        )
-        if valid.all() and inside.all():
+        ok = True
+        for pose in poses or [None]:
+            if pose is not None:
+                apply_pose(bid, joint_idx, pose)
+            _, _, uv, valid, _ = project_link_keypoints(
+                bid, link_idx, W, H, 0.0, view, K=K
+            )
+            inside = (
+                (uv[:, 0] >= 10)
+                & (uv[:, 0] < W - 10)
+                & (uv[:, 1] >= 10)
+                & (uv[:, 1] < H - 10)
+            )
+            if not (valid.all() and inside.all()):
+                ok = False
+                break
+        if ok:
             return view, yaw, pitch, dist, target
     raise RuntimeError("no view keeps all keypoints inside the image")
 
@@ -267,6 +287,19 @@ def main():
     parser.add_argument("--blur", action="store_true", help="3x3 高斯模糊")
     parser.add_argument("--jpeg-q", type=int, default=0,
                         help="JPEG 质量，0 表示不做 JPEG 压缩")
+    parser.add_argument("--seq-len", type=int, default=1,
+                        help=">1 时生成序列：同序列相机/桌面/光照固定，只转 pan")
+    parser.add_argument("--pan-span", type=float, default=30.0,
+                        help="序列内 pan 总跨度（度）")
+    parser.add_argument("--shadow-p", type=float, default=0.0,
+                        help="每条序列开阴影的概率，>0 时覆盖 --shadow")
+    parser.add_argument("--noise-max", type=float, default=0.0,
+                        help=">0 时每帧在 [0, noise-max] 采样，覆盖 --noise-sigma")
+    parser.add_argument("--jpeg-min", type=int, default=0)
+    parser.add_argument("--jpeg-max", type=int, default=0,
+                        help=">0 时每帧在 [jpeg-min, jpeg-max] 采样，覆盖 --jpeg-q")
+    parser.add_argument("--blur-p", type=float, default=0.0,
+                        help="每帧加模糊的概率")
     args = parser.parse_args()
     if args.finger_colors == "black":
         COLORS["gripper_active_link"] = [0.22, 0.22, 0.22, 1.0]
@@ -283,18 +316,46 @@ def main():
         )
     }
 
+    seq_len = max(1, args.seq_len)
+    seq = None
     for frame_id in range(args.frames):
-        table_color = TABLE_COLORS[int(rng.integers(len(TABLE_COLORS)))]
-        p.changeVisualShape(table_id, -1, rgbaColor=table_color)
-        pose = set_random_pose(bid, joint_idx, rng)
-        view, yaw, pitch, dist, target = sample_view(
-            bid, link_subset, rng, args
-        )
-        light = randomize_light(
-            rng,
-            (args.light_x_min, args.light_x_max),
-            (args.light_y_min, args.light_y_max),
-        )
+        k = frame_id % seq_len
+        if k == 0:
+            # 新序列：一次性定下桌面、光照、阴影开关、基础姿态和相机
+            table_color = TABLE_COLORS[int(rng.integers(len(TABLE_COLORS)))]
+            p.changeVisualShape(table_id, -1, rgbaColor=table_color)
+            light = randomize_light(
+                rng,
+                (args.light_x_min, args.light_x_max),
+                (args.light_y_min, args.light_y_max),
+            )
+            shadow = 1 if rng.random() < args.shadow_p else args.shadow
+            base = set_random_pose(bid, joint_idx, rng)
+            if seq_len > 1:
+                lo, hi = JOINT_RANGES["arm_shoulder_pan_joint"]
+                # --pan-span 是角度，JOINT_RANGES 是弧度，必须转
+                span = min(float(np.deg2rad(args.pan_span)), hi - lo)
+                pan0 = float(rng.uniform(lo, hi - span))
+                poses = []
+                for j in range(seq_len):
+                    q = dict(base)
+                    q["arm_shoulder_pan_joint"] = pan0 + span * j / (seq_len - 1)
+                    poses.append(q)
+            else:
+                poses = [base]
+            view, yaw, pitch, dist, target = sample_view(
+                bid, joint_idx, link_subset, rng, args, poses=poses
+            )
+            seq = dict(
+                table_color=table_color, light=light, shadow=shadow, poses=poses
+            )
+        else:
+            table_color = seq["table_color"]
+            light = seq["light"]
+            shadow = seq["shadow"]
+
+        pose = seq["poses"][k]
+        apply_pose(bid, joint_idx, pose)
         rgb, depth, seg = render_frame(
             W,
             H,
@@ -303,16 +364,25 @@ def main():
             NEAR,
             FAR,
             K=K,
-            shadow=args.shadow,
+            shadow=shadow,
             light_direction=light["direction"],
             light_color=light["color"],
             ambient=light["ambient"],
             diffuse=light["diffuse"],
             specular=light["specular"],
         )
-        rgb = post_process(
-            rgb, rng, args.noise_sigma, args.blur, args.jpeg_q
+        noise = (
+            float(rng.uniform(0.0, args.noise_max))
+            if args.noise_max > 0
+            else args.noise_sigma
         )
+        jq = (
+            int(rng.integers(args.jpeg_min, args.jpeg_max + 1))
+            if args.jpeg_max > 0
+            else args.jpeg_q
+        )
+        blur = bool(rng.random() < args.blur_p) if args.blur_p > 0 else args.blur
+        rgb = post_process(rgb, rng, noise, blur, jq)
         names, points3d, uv, valid, _ = project_link_keypoints(
             bid, link_subset, W, H, 0.0, view, K=K
         )
@@ -350,12 +420,11 @@ def main():
                 "target": target,
             },
             "light": light,
-            "shadow": args.shadow,
-            "degrade": {
-                "noise_sigma": args.noise_sigma,
-                "blur": args.blur,
-                "jpeg_q": args.jpeg_q,
-            },
+            "shadow": shadow,
+            "degrade": {"noise_sigma": noise, "blur": blur, "jpeg_q": jq},
+            "sequence": frame_id // seq_len,
+            "frame_in_seq": k,
+            "seq_len": seq_len,
             "table_color": table_color,
             "view_matrix": [float(x) for x in view],
             "R_cb": r_cb.tolist(),
