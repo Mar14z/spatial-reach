@@ -5,6 +5,8 @@
 
 当前阶段：**仿真优先**。先把「单目 → 空间概念 → 抓取」的链路在仿真里完整跑通，再用同一套接口切真机。
 
+> 论文库与技术路线：[docs/papers.md](docs/papers.md)（按推进阶段索引，含链接、优点与局限）。
+
 ---
 
 ## 1. 核心想法：单目摄像头如何建立空间概念
@@ -58,24 +60,25 @@ T_base←camera（相机相对基座的 6DoF 位姿）
 
 ```
 ┌──────────────────────────────────────────────────────────┐
-│                    仿真后端 (PyBullet + pyrender)          │
-│   world / arm / camera / renderer / randomization         │
+│ 【已实现】仿真后端  PyBullet + TinyRenderer               │
+│   sim/camera · sim/renderer · data/dataset                │
 └───────────────────────────┬──────────────────────────────┘
                             │ ArmBackend / CameraSource
                             ▼
 ┌──────────────────────────────────────────────────────────┐
-│ Perception        keypoints · detector · geometry · pose  │
-│                   图像 → 2D 结构 → PnP → 相机位姿           │
+│ 【已实现】Learning / Perception                            │
+│   learning/keypoint_model · perception/geometry · pose    │
+│   图像 → heatmap → 2D 关键点 → PnP → 相机相对基座位姿     │
 └───────────────────────────┬──────────────────────────────┘
                             ▼
 ┌──────────────────────────────────────────────────────────┐
-│ Spatial（核心）    frames · scene_graph · relations · memory│
-│                   基座系下的物体、关系、记住并更新           │
+│ 【未实现】Spatial（核心）  frames · scene_graph · relations │
+│           基座系下的物体、关系、记住并更新                 │
 └───────────────────────────┬──────────────────────────────┘
                             ▼
 ┌──────────────────────────────────────────────────────────┐
-│ Grasp             kinematics · planner · executor         │
-│                   IK → 接近 → 抓取 → 放置                  │
+│ 【未实现】Grasp  kinematics · planner · executor          │
+│           IK → 接近 → 抓取 → 放置                         │
 └───────────────────────────┬──────────────────────────────┘
                             ▼
                     actions → ArmBackend
@@ -89,65 +92,52 @@ touch/
 ├── .gitignore
 ├── requirements.txt
 ├── configs/
-│   ├── sim.yaml              # 仿真后端、物理步长、随机种子
-│   ├── camera.yaml           # 虚拟相机分辨率、视场角、裁剪面
-│   ├── camera_acepro.yaml    # Ace Pro UVC 实测 + 标定引用
-│   └── camera_intrinsics.yaml# 1280×720 标定结果（K / dist）
+│   ├── camera_acepro.yaml    # Ace Pro UVC 实测参数
+│   └── camera_intrinsics.yaml# 1280×720 标定结果（K / dist，被 touch/camera.py 读取）
 ├── assets/
 │   ├── robots/phantomx_pincher_cad/  # CAD URDF + 零件 STL（来源/许可见目录内 README）
 │   ├── objects/              # 目标物体模型
 │   ├── textures/             # 域随机化纹理
 │   └── backgrounds/          # 域随机化背景
-├── touch/
+├── touch/                    # 只保留已实现模块（2026-10-25 已移除 11 个 1 行占位）
+│   ├── __init__.py
+│   ├── camera.py             # 真实相机：内参加载、去畸变、16:9→4:3 裁剪
 │   ├── interfaces.py         # ArmBackend / CameraSource：仿真与真机的接缝
-│   ├── sim/
-│   │   ├── world.py          # PyBullet 世界：桌面、物体、物理
-│   │   ├── arm.py            # ArmBackend 的仿真实现
-│   │   ├── camera.py         # 可任意摆放的虚拟相机
-│   │   ├── renderer.py       # pyrender 离屏渲染：RGB / 深度 / 分割 / keypoints
-│   │   └── randomization.py  # 材质、光照、背景、相机位姿随机化
-│   ├── perception/
-│   │   ├── keypoints.py      # 臂关节 keypoint 检测（heatmap）
-│   │   ├── detector.py       # 目标检测
-│   │   ├── geometry.py       # 投影、反投影、射线-平面求交
-│   │   └── pose.py           # PnP：相机相对基座位姿
-│   ├── spatial/              # 核心：空间概念
-│   │   ├── frames.py         # world / base / camera / image 坐标帧与变换
-│   │   ├── scene_graph.py    # 物体、位置、属性
-│   │   ├── relations.py      # 左右 / 前后 / 远近等关系判定
-│   │   └── memory.py         # 空间记忆：相机移动后的重锚定
-│   ├── grasp/
-│   │   ├── kinematics.py     # 5 轴 FK / IK
-│   │   ├── planner.py        # 抓取点与接近轨迹
-│   │   └── executor.py       # 动作执行（经 ArmBackend）
 │   ├── data/
-│   │   ├── generate.py       # 合成数据工厂入口
-│   │   └── dataset.py        # 数据集读取与增强
+│   │   └── dataset.py        # M0Dataset + heatmap 标签
 │   ├── learning/
-│   │   ├── train_keypoints.py
-│   │   └── evaluate.py       # PCK / 位姿误差 / 成功率
-│   ├── deploy/
-│   │   ├── export.py         # ONNX 导出
-│   │   └── quantize.py       # X5 hb_mapper 量化脚本
-│   └── pipeline/
-│       └── loop.py           # 感知 → 空间 → 抓取主循环
-├── scripts/                  # 可执行入口（M0 起添加）
+│   │   ├── evaluate.py       # PCK / 位姿误差
+│   │   └── keypoint_model.py # ResNet-18 + U-Net heatmap 网络
+│   ├── perception/
+│   │   ├── geometry.py       # 投影、反投影、射线-平面求交
+│   │   └── pose.py           # PnP：相机相对基座的位姿
+│   └── sim/
+│       ├── camera.py         # 虚拟相机：FOV→K、投影、投影矩阵
+│       └── renderer.py       # PyBullet TinyRenderer 离屏渲染
+├── scripts/                  # 可执行入口：数据生成 / 训练 / 评测 / 渲染
+│   └── ablation_report.py    # 统一评测：val 目录 + 预测 JSON → 一行完整指标
 ├── tests/
 ├── docs/
+│   ├── papers.md             # 论文库：按推进阶段索引（链接 / 优点 / 局限）
+│   ├── synthetic-data.md
+│   ├── assets/
+│   └── learning/             # 学习笔记镜像（主副本在 Obsidian，不入库）
 ├── data/                     # 数据（不入库）
 │   ├── synthetic/
 │   └── real/
 └── outputs/                  # 渲染、日志、权重（不入库）
     ├── renders/
     ├── checkpoints/
-    └── runs/
+    ├── eval/
+    ├── runs/
+    └── _archive/             # 2026-10-25 归档的一次性脚本与日志
 ```
 
 ## 5. 里程碑（仿真优先）
 
 | 阶段 | 内容 | 交付物 | 退出条件（初始目标，M0 后校准） |
 |---|---|---|---|
-| **M0 场景与渲染** | PyBullet 场景、5 轴臂模型、可任意摆放的虚拟相机、pyrender 离屏渲染 | 一条命令渲染出 RGB + 深度 + 分割 + 2D keypoints + 相机/关节真值 | 连续 100 帧无泄漏；标注叠加图与渲染图对齐 |
+| **M0 场景与渲染** | PyBullet 场景、5 轴臂模型、可任意摆放的虚拟相机、TinyRenderer 离屏渲染 | 一条命令渲染出 RGB + 深度 + 分割 + 2D keypoints + 相机/关节真值 | 连续 100 帧无泄漏；标注叠加图与渲染图对齐 |
 | **M1 单目自标定** | 关节角 + URDF → 3D keypoints；图像 → 2D keypoints；PnP 求 `T_base←camera` | 自标定模块 + 误差评测 | 仿真中平移误差 ≤1cm、旋转 ≤2° `待实测` |
 | **M2 空间认知** | scene graph、物体 3D 定位（射线-平面求交）、关系判定、空间记忆与重锚定 | 空间查询 demo：`红色方块在机械臂左边多少厘米` | 物体 3D 误差 ≤1.5cm；关系查询准确率 ≥95%；挪相机后自动恢复 |
 | **M3 闭环抓取** | 检测 → 空间定位 → IK → 抓取 → 放置 | 仿真闭环抓取 demo | 简单方块抓取成功率 ≥90%（20 次统计） |
@@ -157,11 +147,11 @@ M0–M3 全程 PC，零真机依赖；M4 才引入实拍与开发板。
 
 ## 6. 技术栈
 
-- **仿真**：PyBullet（物理）、pyrender（离屏渲染）、trimesh（网格）
+- **仿真**：PyBullet（物理 + TinyRenderer 离屏渲染）、trimesh（网格）
 - **视觉**：PyTorch（keypoint heatmap / 检测）、OpenCV（PnP、标定、几何）
 - **数值**：NumPy / SciPy
 - **部署（后续）**：RDK X5 + TROS + Horizon `hb_mapper`（INT8/BPU）
-- **Python**：3.11–3.13（若 pybullet/pyrender 轮子不兼容，退 3.11）
+- **Python**：3.11–3.13（若 pybullet 轮子不兼容，退 3.11）
 
 ## 7. 开发环境
 
@@ -202,7 +192,7 @@ python scripts/render_urdf.py
 
 ![CAD model](docs/assets/pincher_cad_upright_a.png)
 
-当前配置：`configs/sim.yaml` 的 `robot_urdf` 指向 [phantomx_pincher_cad.urdf](file:///D:/documents/Code/touch/assets/robots/phantomx_pincher_cad/phantomx_pincher_cad.urdf)。生成脚本 [build_cad_urdf.py](file:///D:/documents/Code/touch/scripts/build_cad_urdf.py)，渲染见 [pincher_cad_views.png](file:///D:/documents/Code/touch/outputs/renders/pincher_cad_views.png)。
+当前配置：CAD URDF 路径由 [generate_frames.py](file:///D:/documents/Code/touch/scripts/generate_frames.py#L35) 的 `URDF` 常量指定，指向 [phantomx_pincher_cad_keypoints.urdf](file:///D:/documents/Code/touch/assets/robots/phantomx_pincher_cad/phantomx_pincher_cad_keypoints.urdf)；基础模型由 [build_cad_urdf.py](file:///D:/documents/Code/touch/scripts/build_cad_urdf.py) 生成、关键点标记由 [build_keypoint_urdf.py](file:///D:/documents/Code/touch/scripts/build_keypoint_urdf.py) 注入，渲染见 [pincher_cad_views.png](file:///D:/documents/Code/touch/outputs/renders/pincher_cad_views.png)。
 
 旧的手工 URDF 仅本地保留作对照；它的 5.4cm 基座高度是另一个参考点，不再作为默认。
 
@@ -220,13 +210,25 @@ python scripts/render_urdf.py
 ### 复现
 
 ```bash
-# 1) 生成 CAD 合成数据
-python scripts/generate_frames.py --frames 500 --seed 200   --out data/synthetic/m0_cad/train --yaw-min 0 --yaw-max 360   --dist-min 0.35 --dist-max 0.60 --pitch-min -25 --pitch-max -5 --no-depth
+# 1) 生成 9 点合成数据（单进程示例；大数据可用 parts + merge_parts.py）
+python scripts/generate_frames.py --frames 1000 --seed 500 \
+  --out data/synthetic/m0_kp9/train --yaw-min 0 --yaw-max 360 \
+  --dist-min 0.35 --dist-max 0.60 --pitch-min -25 --pitch-max -5 --no-depth
+python scripts/generate_frames.py --frames 100 --seed 501 \
+  --out data/synthetic/m0_kp9/val --yaw-min 0 --yaw-max 360 \
+  --dist-min 0.35 --dist-max 0.60 --pitch-min -25 --pitch-max -5 --no-depth
 
-# 2) 训练 keypoint 模型
-python scripts/train_keypoints.py --model resnet18   --train-root data/synthetic/m0_cad/train --val-root data/synthetic/m0_cad/val   --steps 3000 --batch-size 8 --lr 1e-3 --stride 4 --sigma 3.0   --ckpt outputs/checkpoints/m0_cad_keypoints.pth
+# 2) 训练（GPU，cache + AMP）
+python scripts/train_keypoints.py --model resnet18 \
+  --train-root data/synthetic/m0_kp9/train --val-root data/synthetic/m0_kp9/val \
+  --steps 1000 --batch-size 64 --workers 0 --cache --lr 3e-3 \
+  --stride 4 --sigma 3.0 --eval-every 500 \
+  --ckpt outputs/checkpoints/m0_kp9_resnet18.pth
 
-# 3) 测试
+# 3) TensorBoard
+tensorboard --logdir outputs/tb
+
+# 4) 测试
 pytest -q
 ```
 
@@ -245,12 +247,23 @@ pytest -q
 - [x] M0 ResNet-18 基线（验证集平均像素误差 3.91px，软最大值解码 3.71px）
 - [x] M0 热图步长 2 ResNet-18（验证集软最大值解码 4.22px，PCK@3 57.5%）
 - [x] CAD 模型重训（验证集软最大值解码 5.30px，PCK@3 55.2%）
-- [ ] 确认基座参考 / 优化腕、夹爪 keypoint
-- [ ] M1：用预测 keypoints 跑 PnP
-- [ ] M1：keypoint + PnP 自标定
+- [x] M1 PnP 对照：真值 6 点通过；预测 6 点 13.9cm / 16.1°
+- [x] 模型对比：Tiny U-Net / ResNet-18 / MobileNetV3；ResNet-18 最好
+- [x] 夹爪 keypoint 对照：去掉后 3.97px，但 5 点 PnP 仍不稳
+- [x] 新 keypoint 彩色标记（K0–K5）：val 3.56px/60.2%；预测 PnP 7.14cm/10.23°
+- [x] 9 点外抱环标记（D 组）+ gamma 预处理：test 500 帧 2D median 2.03px / PCK@3 81.4% / 平移 median 2.00cm / p95 7.58cm / 翻转 14 帧
+- [x] PnP 误差分解（6 点 100 帧）：误差是**双峰**——`rot<5°` 的 46/100 帧平移 p50 仅 1.96cm；翻转与 `|pan|` 无关（corr 0.18）；`gt_5`（完美 2D 只少 1 点）仍翻转 1/100
+- [x] 工作区减法：移除 11 个 1 行占位模块与 2 个未被引用的 config；一次性脚本/日志归档至 `outputs/_archive/`；评测入口上移为 `scripts/ablation_report.py`
+- [ ] **P0 打破共面**：把 2 个标记移出臂平面 2–3cm（当前 9 点离面散布仅 0.02mm）
+- [ ] **P0 求解器**：`solve_pnp` 默认 ITERATIVE → SQPNP，并显式枚举双解（ITERATIVE 在近共面点上是灾难：rot 中位 151°）
+- [ ] **P0 指标**：一级指标从中位误差改为「翻转率 + 可用帧率」
+- [ ] M1：误差预算表（夹爪容差 → 允许位姿误差）
+- [ ] M1：真机 10–20 帧 + ArUco 真值最小验证
 - [ ] M2：空间认知层
 - [ ] M3：闭环抓取
 - [ ] M4：域随机化 / sim2real / X5
+
+> 论文与技术路线见 [docs/papers.md](docs/papers.md)；阶段索引与该走哪一步见其 §0。
 
 ## 9. 边界说明
 

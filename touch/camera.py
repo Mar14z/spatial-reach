@@ -169,6 +169,37 @@ def prepare_model_input(
     return resized, replace(intr, K=K, width=model_w, height=model_h)
 
 
+
+
+def model_intrinsics(
+    intr: CameraIntrinsics,
+    model_w: int = 640,
+    model_h: int = 480,
+) -> CameraIntrinsics:
+    """只计算中心裁切 + 缩放后的 K，不处理图像。"""
+    w, h = intr.width, intr.height
+    target_aspect = model_w / model_h
+    if w / h > target_aspect:
+        crop_w = int(round(h * target_aspect))
+        crop_h = h
+        x0 = (w - crop_w) // 2
+        y0 = 0
+    else:
+        crop_w = w
+        crop_h = int(round(w / target_aspect))
+        x0 = 0
+        y0 = (h - crop_h) // 2
+    K = intr.K.astype(np.float64).copy()
+    K[0, 2] -= x0
+    K[1, 2] -= y0
+    sx, sy = model_w / crop_w, model_h / crop_h
+    K[0, 0] *= sx
+    K[1, 1] *= sy
+    K[0, 2] *= sx
+    K[1, 2] *= sy
+    return replace(intr, K=K, width=model_w, height=model_h)
+
+
 class AceProCamera:
     """Insta360 Ace Pro 的 UVC 相机源，实现 CameraSource 协议。"""
 

@@ -7,9 +7,23 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 from torchvision import models
+from torchvision.models.segmentation import deeplabv3_mobilenet_v3_large
 
 HM_W, HM_H = 160, 120
 INPUT_W, INPUT_H = 320, 240
+
+# 与 build_keypoint_urdf.py 的 KEYPOINTS 顺序一致
+KEYPOINT_NAMES = [
+    "基座",
+    "肩pan",
+    "肩lift",
+    "大臂中点",
+    "肘",
+    "小臂中点",
+    "腕",
+    "底座左点",
+    "底座右点",
+]
 
 
 def normalize(images):
@@ -17,8 +31,11 @@ def normalize(images):
 
 
 class TinyHeatmapNet(nn.Module):
-    def __init__(self, n_keypoints: int = 6):
+    def __init__(
+        self, n_keypoints: int = 6, out_size: tuple[int, int] = (120, 160)
+    ):
         super().__init__()
+        self.out_size = out_size
         self.enc1 = nn.Sequential(
             nn.Conv2d(3, 32, 3, padding=1),
             nn.ReLU(),
@@ -59,6 +76,9 @@ class TinyHeatmapNet(nn.Module):
             d2, size=e1.shape[-2:], mode="bilinear", align_corners=False
         )
         d1 = self.dec1(torch.cat([d1, e1], dim=1))
+        d1 = F.interpolate(
+            d1, size=self.out_size, mode="bilinear", align_corners=False
+        )
         return torch.sigmoid(self.head(d1))
 
 
@@ -110,6 +130,29 @@ class ResNetHeatmapNet(nn.Module):
             d1, size=self.out_size, mode="bilinear", align_corners=False
         )
         return torch.sigmoid(self.head(d1))
+
+
+class MobileNetHeatmapNet(nn.Module):
+    """MobileNetV3-Large + DeepLabV3 头，输出 n_keypoints 张 heatmap。"""
+
+    def __init__(
+        self, n_keypoints: int = 6, out_size: tuple[int, int] = (120, 160)
+    ):
+        super().__init__()
+        self.out_size = out_size
+        self.net = deeplabv3_mobilenet_v3_large(
+            weights=None,
+            weights_backbone=None,
+            num_classes=n_keypoints,
+            aux=False,
+        )
+
+    def forward(self, x):
+        out = self.net(x)["out"]
+        out = F.interpolate(
+            out, size=self.out_size, mode="bilinear", align_corners=False
+        )
+        return torch.sigmoid(out)
 
 
 def collate(batch):

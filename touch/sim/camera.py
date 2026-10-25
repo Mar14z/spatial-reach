@@ -54,3 +54,24 @@ def project_base_points(
     uv[valid, 0] = K[0, 0] * points_cam[valid, 0] / z[valid] + K[0, 2]
     uv[valid, 1] = K[1, 1] * points_cam[valid, 1] / z[valid] + K[1, 2]
     return uv, valid
+
+
+def projection_from_intrinsics(
+    K: np.ndarray,
+    width: int,
+    height: int,
+    near: float = 0.01,
+    far: float = 5.0,
+) -> list[float]:
+    """由相机 K 构造 PyBullet/OpenGL 列主序投影矩阵。"""
+    fx, fy = float(K[0, 0]), float(K[1, 1])
+    cx, cy = float(K[0, 2]), float(K[1, 2])
+    P = np.zeros((4, 4), dtype=np.float64)
+    P[0, 0] = 2.0 * fx / width
+    P[0, 2] = 1.0 - 2.0 * cx / width
+    P[1, 1] = 2.0 * fy / height
+    P[1, 2] = 1.0 - 2.0 * cy / height
+    P[2, 2] = -(far + near) / (far - near)
+    P[2, 3] = -2.0 * far * near / (far - near)
+    P[3, 2] = -1.0
+    return P.flatten(order="F").tolist()
