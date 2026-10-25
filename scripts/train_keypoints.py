@@ -36,17 +36,41 @@ from touch.learning.keypoint_model import (
 CKPT = ROOT / "outputs/checkpoints/m0_keypoints.pth"
 
 
-def evaluate(model, loader, device, stride, drop_gripper, use_amp):
+def augment_view(images, gamma_jitter: float, light_jitter: float) -> torch.Tensor:
+    """一次随机光度扰动：gamma + 方向性亮度梯度（模拟侧光/逆光）。
+
+    两条样本各自独立采样，用在一致性约束上：同一张图经不同光照后，关键点
+    坐标必须不变。这正是系统偏差（整组 9 点集体平移）的来源。
+    """
+    b, _, _, w = images.shape
+    x = images.clamp(0, 1)
+    if gamma_jitter > 0:
+        g = 1.0 + (torch.rand(b, device=x.device) * 2 - 1) * gamma_jitter
+        x = x ** g.view(-1, 1, 1, 1)
+    if light_jitter > 0:
+        ramp = torch.linspace(-1.0, 1.0, w, device=x.device).view(1, 1, 1, -1)
+        a = (torch.rand(b, device=x.device) * 2 - 1) * light_jitter
+        x = (x * (1.0 + a.view(-1, 1, 1, 1) * ramp)).clamp(0, 1)
+    return normalize(x)
+
+
+def parse_size(text: str) -> tuple[int, int]:
+    """'640x480' -> (480, 640)，返回 (h, w)。"""
+    w, h = (int(v) for v in text.lower().split("x"))
+    return h, w
+
+
+def evaluate(model, loader, device, stride, drop_gripper, use_amp, input_hw=(INPUT_H, INPUT_W)):
     """返回一套指标：argmax/soft-argmax 双解码 + 逐点误差 + 带符号偏差 + NME。"""
     model.eval()
     e_argmax, e_soft, bias, nme = [], [], [], []
     with torch.no_grad():
         for images, _, keypoints in loader:
             images = images.to(device, non_blocking=True)
-            if images.shape[-2:] != (INPUT_H, INPUT_W):
+            if images.shape[-2:] != input_hw:
                 images = F.interpolate(
                     images,
-                    size=(INPUT_H, INPUT_W),
+                    size=input_hw,
                     mode="bilinear",
                     align_corners=False,
                 )
@@ -156,6 +180,24 @@ def main():
     )
     parser.add_argument("--train-extra", type=Path, default=None)
     parser.add_argument("--val-extra", type=Path, default=None)
+    parser.add_argument(
+        "--consistency",
+        type=float,
+        default=0.0,
+        help=">0 时开增强一致性：同一批图做两次不同光度扰动，要求两次预测坐标一致；权重单位 px",
+    )
+    parser.add_argument(
+        "--cons-ramp",
+        type=float,
+        default=0.0,
+        help="一致性视图的亮度梯度强度（0.3 表示 ±30%%，模拟侧光/逆光）",
+    )
+    parser.add_argument(
+        "--input-size",
+        type=str,
+        default=f"{INPUT_W}x{INPUT_H}",
+        help="网络输入 WxH；热图始终是 640x480/stride，本参数只改 encoder 看到的清晰度",
+    )
     parser.add_argument("--no-amp", action="store_true")
     parser.add_argument("--logdir", type=Path, default=ROOT / "outputs/tb_zh")
     parser.add_argument(
@@ -165,17 +207,24 @@ def main():
         help="TensorBoard 里显示的名字（可用 a/b 分组），默认取权重文件名",
     )
     parser.add_argument("--ckpt", type=Path, default=CKPT)
+    parser.add_argument(
+        "--init",
+        type=Path,
+        default=None,
+        help="warm-start：从已有权重起步（只加载参数，不恢复优化器状态）",
+    )
     args = parser.parse_args()
 
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     use_amp = (device.type == "cuda") and (not args.no_amp)
     torch.backends.cudnn.benchmark = False
+    in_h, in_w = parse_size(args.input_size)
 
     train_ds = M0Dataset(
         args.train_root,
         stride=args.stride,
         sigma=args.sigma,
-        image_size=(INPUT_H, INPUT_W),
+        image_size=(in_h, in_w),
         cache=args.cache,
         preprocess=args.preprocess,
         extra_labels=args.train_extra,
@@ -184,7 +233,7 @@ def main():
         args.val_root,
         stride=args.stride,
         sigma=args.sigma,
-        image_size=(INPUT_H, INPUT_W),
+        image_size=(in_h, in_w),
         cache=args.cache,
         preprocess=args.preprocess,
         extra_labels=args.val_extra,
@@ -220,6 +269,9 @@ def main():
     else:
         model = TinyHeatmapNet(n_keypoints=n_keypoints, out_size=out_size)
     model = model.to(device)
+    if args.init is not None:
+        model.load_state_dict(torch.load(args.init, map_location=device))
+        print(f"warm-start from {args.init}")
 
     optimizer = torch.optim.Adam(model.parameters(), lr=args.lr)
     # lr 不衰减时，末期会在两个解之间来回跳（m0_seq 实测 step2800 优于 step3200）
@@ -237,7 +289,7 @@ def main():
     print(
         f"device={device} | batch={args.batch_size} | workers={args.workers} | "
         f"amp={use_amp} | keypoints={n_keypoints} | train={len(train_ds)} "
-        f"| val={len(val_ds)}"
+        f"| val={len(val_ds)} | input={in_w}x{in_h}"
     )
     run_name = args.run_name or args.ckpt.stem
     writer = SummaryWriter(log_dir=str(args.logdir / run_name), flush_secs=10)
@@ -252,50 +304,84 @@ def main():
             targets = targets.to(device, non_blocking=True).float()
             if args.drop_gripper:
                 targets = targets[:, :-1]
-            if images.shape[-2:] != (INPUT_H, INPUT_W):
+            if images.shape[-2:] != (in_h, in_w):
                 images = F.interpolate(
                     images,
-                    size=(INPUT_H, INPUT_W),
+                    size=(in_h, in_w),
                     mode="bilinear",
                     align_corners=False,
                 )
-            if args.rand_gamma > 0:
-                g = 1.0 + (torch.rand(images.shape[0], device=device) * 2 - 1) * args.rand_gamma
-                images = images.clamp(0, 1) ** g.view(-1, 1, 1, 1)
-            images = normalize(images)
-
-            optimizer.zero_grad(set_to_none=True)
-            with torch.autocast(
-                device_type="cuda", dtype=torch.float16, enabled=use_amp
-            ):
-                pred = model(images)
-            loss = keypoint_loss(pred.float(), targets)
-            scaler.scale(loss).backward()
-            scaler.step(optimizer)
-            scaler.update()
-            if scheduler is not None:
-                scheduler.step()
-            step += 1
-            if step % 10 == 0:
-                writer.add_scalar("3-训练过程/损失", loss.item(), step)
-
-            if step % 100 == 0 or step == 1:
-                elapsed = time.time() - started
-                print(
-                    f"step {step:5d} | loss {loss.item():.6f} | "
-                    f"{step / max(elapsed, 1e-9):.1f} step/s"
-                )
-                writer.add_scalar(
-                    "3-训练过程/吞吐(步每秒)", step / max(elapsed, 1e-9), step
-                )
+            if args.consistency > 0:
+                # 同一批图两个视图：各自不同的 gamma 与光照梯度
+                xa = augment_view(images, args.rand_gamma, args.cons_ramp)
+                xb = augment_view(images, args.rand_gamma, args.cons_ramp)
+                optimizer.zero_grad(set_to_none=True)
+                with torch.autocast(
+                    device_type="cuda", dtype=torch.float16, enabled=use_amp
+                ):
+                    pa = model(xa)
+                    pb = model(xb)
+                pa, pb = pa.float(), pb.float()
+                loss = 0.5 * (keypoint_loss(pa, targets) + keypoint_loss(pb, targets))
+                # 一致性用 px 计的均值 L2：直接压住「换个光照就整体平移」
+                cons = torch.linalg.norm(
+                    (soft_argmax(pa) - soft_argmax(pb)) * args.stride, dim=-1
+                ).mean()
+                loss = loss + args.consistency * cons
+                scaler.scale(loss).backward()
+                scaler.step(optimizer)
+                scaler.update()
+                if scheduler is not None:
+                    scheduler.step()
+                step += 1
+                if step % 10 == 0:
+                    writer.add_scalar("3-训练过程/损失", loss.item(), step)
+                    writer.add_scalar("3-训练过程/一致性(px)", cons.item(), step)
+                if step % 100 == 0 or step == 1:
+                    elapsed = time.time() - started
+                    print(
+                        f"step {step:5d} | loss {loss.item():.6f} | "
+                        f"cons {cons.item():.2f}px | {step / max(elapsed, 1e-9):.1f} step/s"
+                    )
+                    writer.add_scalar(
+                        "3-训练过程/吞吐(步每秒)", step / max(elapsed, 1e-9), step
+                    )
+            else:
+                if args.rand_gamma > 0:
+                    g = 1.0 + (torch.rand(images.shape[0], device=device) * 2 - 1) * args.rand_gamma
+                    images = images.clamp(0, 1) ** g.view(-1, 1, 1, 1)
+                images = normalize(images)
+                optimizer.zero_grad(set_to_none=True)
+                with torch.autocast(
+                    device_type="cuda", dtype=torch.float16, enabled=use_amp
+                ):
+                    pred = model(images)
+                loss = keypoint_loss(pred.float(), targets)
+                scaler.scale(loss).backward()
+                scaler.step(optimizer)
+                scaler.update()
+                if scheduler is not None:
+                    scheduler.step()
+                step += 1
+                if step % 10 == 0:
+                    writer.add_scalar("3-训练过程/损失", loss.item(), step)
+                if step % 100 == 0 or step == 1:
+                    elapsed = time.time() - started
+                    print(
+                        f"step {step:5d} | loss {loss.item():.6f} | "
+                        f"{step / max(elapsed, 1e-9):.1f} step/s"
+                    )
+                    writer.add_scalar(
+                        "3-训练过程/吞吐(步每秒)", step / max(elapsed, 1e-9), step
+                    )
             if step % args.eval_every == 0:
                 tr = evaluate(
                     model, train_loader, device, args.stride,
-                    args.drop_gripper, use_amp,
+                    args.drop_gripper, use_amp, (in_h, in_w),
                 )
                 va = evaluate(
                     model, val_loader, device, args.stride,
-                    args.drop_gripper, use_amp,
+                    args.drop_gripper, use_amp, (in_h, in_w),
                 )
                 print(
                     f"  train mean {tr['mean_px']:.2f}px pck@3 {tr['pck@3']:.3f}\n"
@@ -320,10 +406,12 @@ def main():
                 break
 
     tr = evaluate(
-        model, train_loader, device, args.stride, args.drop_gripper, use_amp
+        model, train_loader, device, args.stride, args.drop_gripper, use_amp,
+        (in_h, in_w),
     )
     va = evaluate(
-        model, val_loader, device, args.stride, args.drop_gripper, use_amp
+        model, val_loader, device, args.stride, args.drop_gripper, use_amp,
+        (in_h, in_w),
     )
     print(
         f"final train mean {tr['mean_px']:.2f}px pck@3 {tr['pck@3']:.3f}\n"

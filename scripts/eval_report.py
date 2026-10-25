@@ -100,6 +100,9 @@ def main():
           f"p95 {fmt(s['px_p95'], ci.get('px_p95'), 'px')}  n={s['n_frames']} 帧内先求均值")
     print(f"     PCK kp @3 {s['kp_pck3']*100:.1f}%  @5 {s['kp_pck5']*100:.1f}%  "
           f"frame @3 {s['pck3']*100:.1f}%   NME {s['nme']:.4f}")
+    # 整组 9 点的纵向系统偏差：PnP 对偏差远比随机噪声敏感，偏差拉歪解后
+    # 重投影误差依旧很小、检不出来，必须单独看。
+    print(f"     bias_v_max {s['bias_v_max']:.2f}px 系统偏差")
     print(f"PnP  trans {s['trans_median']:.2f} / {fmt(s['trans_p95'], ci.get('trans_p95'), 'cm')}   "
           f"rot {s['rot_median']:.2f} / {fmt(s['rot_p95'], ci.get('rot_p95'), '°')}   "
           f"flips {s['flips']} ({s['flip_rate']*100:.1f}%)")
@@ -132,6 +135,7 @@ def main():
             f"| 2D p95 帧级 (px) | {s['px_p95']:.2f} | {ci.get('px_p95')} |\n"
             f"| PCK@3 关键点级 | {s['kp_pck3']*100:.1f}% | — |\n"
             f"| PCK@3 帧级 | {s['pck3']*100:.1f}% | — |\n"
+            f"| bias_v_max (px) | {s['bias_v_max']:.2f} | — |\n"
             f"| trans median (cm) | {s['trans_median']:.2f} | — |\n"
             f"| trans p95 (cm) | {s['trans_p95']:.2f} | {ci.get('trans_p95')} |\n"
             f"| rot median (°) | {s['rot_median']:.2f} | — |\n"
