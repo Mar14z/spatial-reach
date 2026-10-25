@@ -2,8 +2,11 @@
 
 from __future__ import annotations
 
+import io
+
 import numpy as np
 import pybullet as p
+from PIL import Image, ImageFilter
 
 from touch.sim.camera import (
     intrinsics_from_fov,
@@ -62,6 +65,32 @@ def render_frame(
     depth_m = far * near / (far - (far - near) * depth_buffer)
     seg = np.reshape(seg, (height, width)).astype(np.int32)
     return rgb, depth_m, seg
+
+
+def post_process(
+    rgb: np.ndarray,
+    rng: np.random.Generator,
+    noise_sigma: float = 0.0,
+    blur: bool = False,
+    jpeg_q: int = 0,
+) -> np.ndarray:
+    """叠加真实相机退化：高斯噪点、轻微模糊、JPEG 压缩。
+
+    TinyRenderer 输出是“干净”的，真实相机永远不会。noise_sigma 的单位是
+    0-255 像素值尺度（例如 3.0 约等于手机上常见的暗光噪点）。
+    """
+    img = rgb.astype(np.float32)
+    if noise_sigma > 0:
+        img = img + rng.normal(0.0, noise_sigma, img.shape)
+    out = np.clip(img, 0, 255).astype(np.uint8)
+    if blur:
+        out = np.asarray(Image.fromarray(out).filter(ImageFilter.GaussianBlur(0.8)))
+    if jpeg_q > 0:
+        buf = io.BytesIO()
+        Image.fromarray(out).save(buf, format="JPEG", quality=int(jpeg_q))
+        buf.seek(0)
+        out = np.asarray(Image.open(buf).convert("RGB"))
+    return out
 
 
 def project_link_keypoints(

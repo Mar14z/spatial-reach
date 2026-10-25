@@ -5,10 +5,13 @@
 - 中心裁 4:3 再缩放到 640×480
 - 直接用裁切后的 K 在 640×480 上渲染，等价于真实模型输入
 
+--urdf 必须显式给：不同 URDF 的 keypoint 布局不同，拿错 URDF 生成的数据
+不会报错，但和 checkpoint 对不上。各数据集的配方记在 data/manifest.json。
+
 用法：
     conda activate arm_sim
-    python scripts/generate_frames.py --frames 10 --seed 0
-    python scripts/generate_frames.py --frames 2000 --seed 500 \
+    python scripts/generate_frames.py --urdf assets/robots/phantomx_pincher_cad/phantomx_pincher_cad_keypoints_v1.urdf --frames 10 --seed 0
+    python scripts/generate_frames.py --urdf assets/robots/phantomx_pincher_cad/phantomx_pincher_cad_keypoints_v1.urdf --frames 2000 --seed 500 \
         --out data/synthetic/m0_kp9/train --yaw-min 0 --yaw-max 360 \
         --dist-min 0.35 --dist-max 0.60 --pitch-min -25 --pitch-max -5 --no-depth
 """
@@ -28,11 +31,11 @@ sys.path.insert(0, str(ROOT))
 from touch.camera import load_intrinsics, model_intrinsics
 from touch.sim.renderer import (
     opencv_extrinsics_from_view,
+    post_process,
     project_link_keypoints,
     render_frame,
 )
 
-URDF = ROOT / "assets/robots/phantomx_pincher_cad/phantomx_pincher_cad_keypoints.urdf"
 OUT = ROOT / "data/synthetic/m0"
 
 INTR_FULL = load_intrinsics(ROOT / "configs/camera_intrinsics.yaml")
@@ -89,6 +92,12 @@ TABLE_COLORS = [
 
 
 def keypoint_link_names(link_idx, override=None):
+    """定下本次生成用哪几个 link 当 keypoint。
+
+    带标记的 URDF 里有一堆 kp_* link，但布局不止一种（v1 是 9 点全在臂链上，
+    新版是 7 链 + 2 底座横点）。名字对不上时必须报错：静默退回 6 点会让
+    生成的数据点和 checkpoint 不匹配，而且不会抛任何异常。
+    """
     if override:
         missing = [n for n in override if n not in link_idx]
         if missing:
@@ -96,6 +105,12 @@ def keypoint_link_names(link_idx, override=None):
         return override
     if all(name in link_idx for name in KP_LINK_NAMES):
         return KP_LINK_NAMES
+    found = sorted(n for n in link_idx if n.startswith("kp_"))
+    if found:
+        raise ValueError(
+            "这个 URDF 的 keypoint 布局与默认不符，必须用 --kp-names 显式指定。"
+            f"URDF 里有: {found}"
+        )
     base = "base_link" if "base_link" in link_idx else "arm_base_link"
     return [base, *KEYPOINT_LINKS]
 
@@ -138,11 +153,13 @@ def set_random_pose(bid, joint_idx, rng):
     return pose
 
 
-def randomize_light(rng):
+def randomize_light(rng, x_range=(-0.5, 0.8), y_range=(-1.0, -0.2)):
+    """光源方向/颜色/强度。y_range 默认恒为负（光总是从前方来）；
+    改成正值就得到与训练集相反的光照方向，用于构造 OOD 集。"""
     return {
         "direction": [
-            float(rng.uniform(-0.5, 0.8)),
-            float(rng.uniform(-1.0, -0.2)),
+            float(rng.uniform(*x_range)),
+            float(rng.uniform(*y_range)),
             1.0,
         ],
         "color": [float(rng.uniform(0.85, 1.0)) for _ in range(3)],
@@ -234,7 +251,22 @@ def main():
         default="split",
         help="夹爪配色：split=红绿（新数据默认），black=与旧 checkpoint 一致",
     )
-    parser.add_argument("--urdf", type=Path, default=URDF)
+    parser.add_argument(
+        "--urdf",
+        type=Path,
+        required=True,
+        help="必填：keypoint 布局由 URDF 决定，配方见 data/manifest.json",
+    )
+    parser.add_argument("--light-x-min", type=float, default=-0.5)
+    parser.add_argument("--light-x-max", type=float, default=0.8)
+    parser.add_argument("--light-y-min", type=float, default=-1.0)
+    parser.add_argument("--light-y-max", type=float, default=-0.2)
+    parser.add_argument("--shadow", type=int, choices=[0, 1], default=0)
+    parser.add_argument("--noise-sigma", type=float, default=0.0,
+                        help="高斯噪声标准差（0-255 尺度），0 表示不加")
+    parser.add_argument("--blur", action="store_true", help="3x3 高斯模糊")
+    parser.add_argument("--jpeg-q", type=int, default=0,
+                        help="JPEG 质量，0 表示不做 JPEG 压缩")
     args = parser.parse_args()
     if args.finger_colors == "black":
         COLORS["gripper_active_link"] = [0.22, 0.22, 0.22, 1.0]
@@ -258,7 +290,11 @@ def main():
         view, yaw, pitch, dist, target = sample_view(
             bid, link_subset, rng, args
         )
-        light = randomize_light(rng)
+        light = randomize_light(
+            rng,
+            (args.light_x_min, args.light_x_max),
+            (args.light_y_min, args.light_y_max),
+        )
         rgb, depth, seg = render_frame(
             W,
             H,
@@ -267,12 +303,15 @@ def main():
             NEAR,
             FAR,
             K=K,
-            shadow=0,
+            shadow=args.shadow,
             light_direction=light["direction"],
             light_color=light["color"],
             ambient=light["ambient"],
             diffuse=light["diffuse"],
             specular=light["specular"],
+        )
+        rgb = post_process(
+            rgb, rng, args.noise_sigma, args.blur, args.jpeg_q
         )
         names, points3d, uv, valid, _ = project_link_keypoints(
             bid, link_subset, W, H, 0.0, view, K=K
@@ -311,6 +350,12 @@ def main():
                 "target": target,
             },
             "light": light,
+            "shadow": args.shadow,
+            "degrade": {
+                "noise_sigma": args.noise_sigma,
+                "blur": args.blur,
+                "jpeg_q": args.jpeg_q,
+            },
             "table_color": table_color,
             "view_matrix": [float(x) for x in view],
             "R_cb": r_cb.tolist(),
