@@ -132,6 +132,12 @@ def main():
     parser.add_argument("--steps", type=int, default=3000)
     parser.add_argument("--batch-size", type=int, default=32)
     parser.add_argument("--lr", type=float, default=3e-3)
+    parser.add_argument(
+        "--lr-schedule",
+        choices=["none", "cosine"],
+        default="none",
+        help="cosine 从 --lr 退火到 --lr/20；lr 不衰减时末期 val 会振荡",
+    )
     parser.add_argument("--sigma", type=float, default=3.0)
     parser.add_argument("--stride", type=int, default=4)
     parser.add_argument("--eval-every", type=int, default=100)
@@ -216,6 +222,16 @@ def main():
     model = model.to(device)
 
     optimizer = torch.optim.Adam(model.parameters(), lr=args.lr)
+    # lr 不衰减时，末期会在两个解之间来回跳（m0_seq 实测 step2800 优于 step3200）
+    scheduler = (
+        torch.optim.lr_scheduler.CosineAnnealingLR(
+            optimizer, T_max=args.steps, eta_min=args.lr / 20
+        )
+        if args.lr_schedule == "cosine"
+        else None
+    )
+    best_ckpt = args.ckpt.with_name(args.ckpt.stem + "_best.pth")
+    best_soft, best_step = float("inf"), 0
     scaler = torch.amp.GradScaler("cuda", enabled=use_amp)
 
     print(
@@ -257,6 +273,8 @@ def main():
             scaler.scale(loss).backward()
             scaler.step(optimizer)
             scaler.update()
+            if scheduler is not None:
+                scheduler.step()
             step += 1
             if step % 10 == 0:
                 writer.add_scalar("3-训练过程/损失", loss.item(), step)
@@ -289,7 +307,14 @@ def main():
                 print("  val kp bias_v:" + " ".join(f"{v:+5.1f}" for v in va["bias_v_px"]))
                 log_metrics(writer, "train", tr, step)
                 log_metrics(writer, "val", va, step, per_keypoint=True)
-                writer.add_scalar("3-训练过程/学习率", args.lr, step)
+                writer.add_scalar(
+                    "3-训练过程/学习率", optimizer.param_groups[0]["lr"], step
+                )
+                if va["soft_mean_px"] < best_soft:
+                    best_soft, best_step = va["soft_mean_px"], step
+                    args.ckpt.parent.mkdir(parents=True, exist_ok=True)
+                    torch.save(model.state_dict(), best_ckpt)
+                    print(f"  * 最佳 val soft {best_soft:.2f}px @ step {step}")
                 model.train()
             if step >= args.steps:
                 break
@@ -313,6 +338,10 @@ def main():
 
     args.ckpt.parent.mkdir(parents=True, exist_ok=True)
     torch.save(model.state_dict(), args.ckpt)
+    print(
+        f"final val soft {va['soft_mean_px']:.2f}px | 最佳 val soft "
+        f"{best_soft:.2f}px @ step {best_step} -> {best_ckpt.name}"
+    )
     writer.flush()
     writer.close()
     print("saved", args.ckpt)
