@@ -99,38 +99,43 @@ touch/
 │   ├── objects/              # 目标物体模型
 │   ├── textures/             # 域随机化纹理
 │   └── backgrounds/          # 域随机化背景
-├── touch/                    # 只保留已实现模块（2026-10-25 已移除 11 个 1 行占位）
+├── touch/                    # 库：仿真与真机共用，不放一次性逻辑
 │   ├── __init__.py
 │   ├── camera.py             # 真实相机：内参加载、去畸变、16:9→4:3 裁剪
 │   ├── interfaces.py         # ArmBackend / CameraSource：仿真与真机的接缝
 │   ├── data/
 │   │   └── dataset.py        # M0Dataset + heatmap 标签
 │   ├── learning/
-│   │   ├── evaluate.py       # PCK / 位姿误差
-│   │   └── keypoint_model.py # ResNet-18 + U-Net heatmap 网络
+│   │   ├── evaluate.py       # 统一评测口径：2D / 位姿 / 桌面 / 可靠性
+│   │   └── keypoint_model.py # Tiny / ResNet-18 / MobileNetV3 三种 heatmap 网络
 │   ├── perception/
-│   │   ├── geometry.py       # 投影、反投影、射线-平面求交
-│   │   └── pose.py           # PnP：相机相对基座的位姿
+│   │   ├── geometry.py       # 投影、反投影、射线-平面求交、位姿误差
+│   │   └── pose.py           # PnP：单帧 / 多候选 / 多帧联合
 │   └── sim/
 │       ├── camera.py         # 虚拟相机：FOV→K、投影、投影矩阵
 │       └── renderer.py       # PyBullet TinyRenderer 离屏渲染
-├── scripts/                  # 可执行入口：数据生成 / 训练 / 评测 / 渲染
-│   └── ablation_report.py    # 统一评测：val 目录 + 预测 JSON → 一行完整指标
-├── tests/
-├── docs/
-│   ├── papers.md             # 论文库：按推进阶段索引（链接 / 优点 / 局限）
-│   ├── synthetic-data.md
-│   ├── assets/
-│   └── learning/             # 学习笔记镜像（主副本在 Obsidian，不入库）
+├── scripts/                  # 14 个可执行入口
+│   ├── build_cad_urdf.py         # 建模：STEP/GLB → CAD 运动学 URDF
+│   ├── build_keypoint_urdf.py    # 建模：追加 9 个 keypoint（--lug-cm 加凸耳）
+│   ├── calibrate_camera.py       # 建模：棋盘格内参标定
+│   ├── generate_frames.py        # 数据：生成合成帧（RGB/深度/分割/2D 真值）
+│   ├── merge_parts.py            # 数据：并行分片合并为 train/val
+│   ├── train_keypoints.py        # 训练：--model tiny|resnet18|mobilenet_v3
+│   ├── predict_keypoints.py      # 推理：模型 → 预测 JSON
+│   ├── eval_report.py            # 评测：唯一入口，含按帧 bootstrap CI
+│   ├── multiframe_select.py      # 实验：单帧 vs 跨帧仲裁 vs 多帧联合
+│   ├── flip_vs_lever.py          # 实验：凸耳高度 δ 扫描
+│   ├── render_urdf.py            # 渲染：URDF 离屏出图
+│   ├── tb_progress.py            # 工具：TensorBoard 曲线转文本
+│   ├── demo_board_pose.py        # 真机：棋盘格位姿
+│   └── demo_color_pose.py        # 真机：颜色块 3D 定位
+├── tests/                    # 8 个测试：相机 / 数据 / PnP / 投影 / CAD
 ├── data/                     # 数据（不入库）
 │   ├── synthetic/
 │   └── real/
-└── outputs/                  # 渲染、日志、权重（不入库）
-    ├── renders/
-    ├── checkpoints/
-    ├── eval/
-    ├── runs/
-    └── _archive/             # 2026-10-25 归档的一次性脚本与日志
+└── outputs/                  # 渲染、权重、日志（不入库）
+    ├── checkpoints/  eval/  renders/  runs/  tb/  calibration/
+    └── _archive/             # 一次性分析脚本归档（96 个，只查不跑）
 ```
 
 ## 5. 里程碑（仿真优先）
@@ -190,7 +195,7 @@ python scripts/render_urdf.py
 - 肩 lift → 肘：**10.70cm**
 - 肘 → 腕：**10.70cm**
 
-![CAD model](docs/assets/pincher_cad_upright_a.png)
+![CAD model](assets/robots/phantomx_pincher_cad/pincher_cad_upright_a.png)
 
 当前配置：CAD URDF 路径由 [generate_frames.py](file:///D:/documents/Code/touch/scripts/generate_frames.py#L35) 的 `URDF` 常量指定，指向 [phantomx_pincher_cad_keypoints.urdf](file:///D:/documents/Code/touch/assets/robots/phantomx_pincher_cad/phantomx_pincher_cad_keypoints.urdf)；基础模型由 [build_cad_urdf.py](file:///D:/documents/Code/touch/scripts/build_cad_urdf.py) 生成、关键点标记由 [build_keypoint_urdf.py](file:///D:/documents/Code/touch/scripts/build_keypoint_urdf.py) 注入，渲染见 [pincher_cad_views.png](file:///D:/documents/Code/touch/outputs/renders/pincher_cad_views.png)。
 
@@ -253,10 +258,11 @@ pytest -q
 - [x] 新 keypoint 彩色标记（K0–K5）：val 3.56px/60.2%；预测 PnP 7.14cm/10.23°
 - [x] 9 点外抱环标记（D 组）+ gamma 预处理：test 500 帧 2D **关键点级** median 1.79px / PCK@3 76.1%（帧级 2.03px / 81.4%，两级不可混用）/ 平移 median 2.00cm / p95 7.58cm / 翻转 14 帧（2.8%）
 - [x] PnP 误差分解（6 点 100 帧）：误差是**双峰**——`rot<5°` 的 46/100 帧平移 p50 仅 1.96cm；翻转与 `|pan|` 无关（corr 0.18）；`gt_5`（完美 2D 只少 1 点）仍翻转 1/100
-- [x] 工作区减法：移除 11 个 1 行占位模块与 2 个未被引用的 config；一次性脚本/日志归档至 `outputs/_archive/`；评测入口上移为 `scripts/ablation_report.py`
+- [x] 工作区减法：移除 11 个 1 行占位模块与 2 个未被引用的 config；一次性脚本/日志归档至 `outputs/_archive/`
+- [x] 代码结构整理：评测入口统一为 `scripts/eval_report.py`（合并 `ablation_report.py`，含 CI 与 markdown 输出）；删除 `eval_pnp.py`（已被 `touch/learning/evaluate.py` 取代）、`render_cad_urdf.py`（被 `render_urdf.py` 取代）、`train_overfit.py`（被 `--model tiny` 取代）、`phantomx_pincher_cad_keypoints_v1.urdf`（旧 9 点链内版，无人引用）与 4 个空壳目录
 - [x] **P0 求解器**：`solve_pnp` 默认改 SQPNP；新增 `solve_pnp_candidates`（IPPE+SQPNP 多候选）与 `select_candidate`（物理先验）。翻转 14→9/500，但 14 个翻转帧里只有 6 帧的正确解在候选集中 → 选解不是瓶颈，几何才是
-- [x] **P0 指标**：一级指标改为 `flip_rate` + `usable@容差`，`scripts/ablation_report.py` 已输出
-- [x] **P0 误差预算**：[docs/error-budget.md](docs/error-budget.md)。关键结论：**旋转误差才是瓶颈**——0.4m 处 5° 会放大成 3.5cm
+- [x] **P0 指标**：一级指标改为 `flip_rate` + `usable@容差`，`scripts/eval_report.py` 已输出
+- [x] **P0 误差预算**：主副本在 Obsidian `单目空间认知/工程文档/误差预算与PnP方案.md`。关键结论：**旋转误差才是瓶颈**——0.4m 处 5° 会放大成 3.5cm
 - [x] **P0 凸耳设计**：δ 扇扫定出 **≥3cm、推荐 5cm**（可用率 71.6%→80.0%）；`build_keypoint_urdf.py --lug-cm 5` 生成带凸耳 URDF。**δ≤1cm 反而更差**
 - [x] **P0 多帧兜底**：凸耳被遮挡时改走**多帧联合**（`solve_pnp_multiframe`）：相机不动、机械臂转 pan 5–30° 拍 2 帧，把各帧点集拼起来重解一次。`real` 口径 98.2%→**99.0–99.8%**，两帧全合成 **100%**。两个反直觉结论：① 跨帧仲裁（`select_candidate_multiframe`）基本无效——9 个错帧里 **8 帧的候选集根本没有正确答案**；② 必须多初值启动，单初值会陷局部极小（112°）
 - [ ] M1：用凸耳 URDF 重生成数据 + 重训（会作废当前 checkpoint）
@@ -266,7 +272,7 @@ pytest -q
 - [ ] M3：闭环抓取
 - [ ] M4：域随机化 / sim2real / X5
 
-> 论文与技术路线见 [docs/papers.md](docs/papers.md)；阶段索引与该走哪一步见其 §0。
+> 文档（论文库、误差预算、合成数据说明、学习笔记）主副本在 Obsidian `D:\documents\note\02 - Notes\02 - 项目\机械臂视觉抓取\单目空间认知\`；本仓库只保留这一份 README。
 
 ## 9. 边界说明
 
