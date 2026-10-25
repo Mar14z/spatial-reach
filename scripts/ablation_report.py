@@ -25,6 +25,11 @@ if len(sys.argv) > 4:
 gx, gy = np.meshgrid(np.linspace(0.05, 0.45, 6), np.linspace(-0.2, 0.2, 5))
 TABLE = np.stack([gx.ravel(), gy.ravel(), np.zeros(gx.size)], axis=1)
 
+# 一级指标：翻转（镜像解）与可用率（位姿落在容差内的帧占比）。
+# 中位误差会掩盖双峰分布，不能单独用作优化目标。
+FLIP_DEG = 15.0
+USABLE = ((3.0, 5.0), (5.0, 10.0))
+
 
 def table_cm(K, R, t, R_gt, t_gt):
     uv, _ = cv2.projectPoints(TABLE, R_gt, t_gt, K, None)
@@ -70,5 +75,9 @@ print(f"PCK  @3 {(E<=3).mean()*100:5.1f}%  @5 {(E<=5).mean()*100:5.1f}%   NME {A
 print(f"bias |dv| max {np.abs(B.mean(0)).max():4.2f} px  worst kp{int(np.argmax(E.mean(0)))} {E.mean(0).max():.2f}px")
 print(f"per-kp px: " + " ".join(f"{v:.2f}" for v in E.mean(0)))
 print(f"PnP  trans {np.median(a[:,0]):5.2f}/{np.percentile(a[:,0],95):6.2f} cm   "
-      f"rot {np.median(a[:,1]):5.2f}/{np.percentile(a[:,1],95):6.2f} deg   flips {(a[:,1]>15).sum():2d}")
+      f"rot {np.median(a[:,1]):5.2f}/{np.percentile(a[:,1],95):6.2f} deg   "
+      f"flips {(a[:,1]>FLIP_DEG).sum():2d} ({(a[:,1]>FLIP_DEG).mean()*100:4.1f}%)")
+print("use  " + "   ".join(
+    f"@{tc:g}cm/{rd:g}° {((a[:,0] <= tc) & (a[:,1] <= rd)).mean()*100:5.1f}%"
+    for tc, rd in USABLE))
 print(f"tbl  median {np.median(a[:,2]):5.2f}  p95 {np.percentile(a[:,2],95):6.2f} cm   >5cm {(a[:,2]>5).sum():2d}")
