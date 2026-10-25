@@ -52,11 +52,17 @@ def main():
     ci = bootstrap_ci(records, n=args.bootstrap) if args.bootstrap else {}
 
     print(f"\n=== {args.label} | {len(records)} 帧 ===")
-    print(f"2D   mean {s['px_mean']:.2f}  median {fmt(s['px_median'], ci.get('px_median'), 'px')}  "
-          f"p95 {fmt(s['px_p95'], ci.get('px_p95'), 'px')}")
-    print(f"     PCK@3 {s['pck3']*100:.1f}%  PCK@5 {s['pck5']*100:.1f}%  NME {s['nme']:.4f}")
+    # 两级统计单元：数值不可混用，必须标清
+    print(f"2D kp  mean {s['kp_px_mean']:.2f}  median {s['kp_px_median']:.2f}  "
+          f"p95 {s['kp_px_p95']:.2f} px  n={s['n_kp_samples']} 每帧每点")
+    print(f"2D fr  mean {s['px_mean']:.2f}  median {fmt(s['px_median'], ci.get('px_median'), 'px')}  "
+          f"p95 {fmt(s['px_p95'], ci.get('px_p95'), 'px')}  n={s['n_frames']} 帧内先求均值")
+    print(f"     PCK kp @3 {s['kp_pck3']*100:.1f}%  @5 {s['kp_pck5']*100:.1f}%  "
+          f"frame @3 {s['pck3']*100:.1f}%   NME {s['nme']:.4f}")
     print(f"PnP  trans {s['trans_median']:.2f} / {fmt(s['trans_p95'], ci.get('trans_p95'), 'cm')}   "
-          f"rot {s['rot_median']:.2f} / {fmt(s['rot_p95'], ci.get('rot_p95'), '°')}   flips {s['flips']}")
+          f"rot {s['rot_median']:.2f} / {fmt(s['rot_p95'], ci.get('rot_p95'), '°')}   "
+          f"flips {s['flips']} ({s['flip_rate']*100:.1f}%)")
+    print("use  " + "   ".join(f"@{k} {v*100:.1f}%" for k, v in s["usable"].items()))
     print(f"tbl  median {s['table_median']:.2f}  p95 {fmt(s['table_p95'], ci.get('table_p95'), 'cm')}")
 
     if args.out:
@@ -69,14 +75,19 @@ def main():
         (args.out / "report.md").write_text(
             f"# {args.label}\n\n帧数 {len(records)}\n\n"
             f"| 指标 | 值 | 95% CI |\n|---|---|---|\n"
-            f"| 2D median (px) | {s['px_median']:.2f} | {ci.get('px_median')} |\n"
-            f"| 2D p95 (px) | {s['px_p95']:.2f} | {ci.get('px_p95')} |\n"
-            f"| PCK@3 | {s['pck3']*100:.1f}% | — |\n"
+            f"| 2D median 关键点级 (px) | {s['kp_px_median']:.2f} | — |\n"
+            f"| 2D p95 关键点级 (px) | {s['kp_px_p95']:.2f} | — |\n"
+            f"| 2D median 帧级 (px) | {s['px_median']:.2f} | {ci.get('px_median')} |\n"
+            f"| 2D p95 帧级 (px) | {s['px_p95']:.2f} | {ci.get('px_p95')} |\n"
+            f"| PCK@3 关键点级 | {s['kp_pck3']*100:.1f}% | — |\n"
+            f"| PCK@3 帧级 | {s['pck3']*100:.1f}% | — |\n"
             f"| trans median (cm) | {s['trans_median']:.2f} | — |\n"
             f"| trans p95 (cm) | {s['trans_p95']:.2f} | {ci.get('trans_p95')} |\n"
+            f"| rot median (°) | {s['rot_median']:.2f} | — |\n"
             f"| rot p95 (°) | {s['rot_p95']:.2f} | {ci.get('rot_p95')} |\n"
-            f"| flips | {s['flips']} | — |\n"
-            f"| table median (cm) | {s['table_median']:.2f} | — |\n"
+            f"| flips | {s['flips']} ({s['flip_rate']*100:.1f}%) | — |\n"
+            + "".join(f"| usable @{k} | {v*100:.1f}% | — |\n" for k, v in s["usable"].items())
+            + f"| table median (cm) | {s['table_median']:.2f} | — |\n"
             f"| table p95 (cm) | {s['table_p95']:.2f} | {ci.get('table_p95')} |\n",
             encoding="utf-8",
         )

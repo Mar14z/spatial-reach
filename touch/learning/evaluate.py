@@ -2,6 +2,12 @@
 
 只依赖 numpy + OpenCV，不碰 torch —— 任何检测器（CNN、HSV、ArUco）都只需产出
 同样格式的预测 JSON 即可复用这套口径。
+
+2D 误差有两级统计单元，数值不可混用，输出时必须显式标注：
+  - 关键点级 `kp_*`：每帧每点算一个样本，n = 帧数 × 点数。这是 PCK 的常规口径。
+  - 帧级 `px_*`：先对一帧内的点求均值再统计，n = 帧数，反映「这一帧整体准不准」。
+帧内求均值会削平尾部，所以帧级的 median / p95 系统性小于关键点级（同一份预测
+实测 1.79/5.90 vs 2.03/4.60），两者不能互相引用。
 """
 
 from __future__ import annotations
@@ -23,6 +29,8 @@ PROTOCOL = {
     "plane_z": 0.0,
     "grid_x": (0.05, 0.45, 6),
     "grid_y": (-0.2, 0.2, 5),
+    # 可用率的分级容差 (平移 cm, 旋转 deg)：两者同时满足才算「这一帧可用」
+    "tolerance": ((3.0, 5.0), (5.0, 10.0)),
 }
 
 
@@ -77,6 +85,8 @@ def evaluate_frames(data_dir, pred_frames, extra=None, cfg=None):
         rec = {
             "frame": frame.name,
             "mean_px": float(e.mean()),
+            "px_vec": [float(v) for v in e],
+            "dv_vec": [float(v) for v in (p2 - gt)[:, 1]],
             "nme": float(e.mean() / max(ref, 1.0)),
             "max_bias_v": float(np.abs((p2 - gt)[:, 1].mean())),
             "spread2d": float(s2[1] / s2[0]) if len(gt) > 2 else np.nan,
@@ -98,29 +108,52 @@ def evaluate_frames(data_dir, pred_frames, extra=None, cfg=None):
     return records, cfg
 
 
+def _stack(records, key):
+    """把每帧的逐点向量堆成 (帧数, 点数)；字段缺失时返回 None。"""
+    rows = [np.asarray(r[key], dtype=np.float64) for r in records if key in r]
+    return np.stack(rows) if rows else None
+
+
 def summarize(records, cfg=None):
     cfg = PROTOCOL if cfg is None else cfg
     ok = [r for r in records if r["pnp_ok"]]
     px = np.array([r["mean_px"] for r in records])
+    mat = _stack(records, "px_vec")
+    dv = _stack(records, "dv_vec")
+    kp = mat.ravel() if mat is not None else px
     trans = np.array([r["trans_cm"] for r in ok])
     rot = np.array([r["rot_deg"] for r in ok])
     table = np.array([r["table_cm"] for r in ok if np.isfinite(r["table_cm"])])
     out = {
         "n_frames": len(records),
         "n_pnp_ok": len(ok),
+        # —— 帧级：每帧一个样本 ——
         "px_mean": float(px.mean()),
         "px_median": float(np.median(px)),
         "px_p95": float(np.percentile(px, 95)),
         "pck3": float((px <= cfg["pck_px"][0]).mean()),
         "pck5": float((px <= cfg["pck_px"][1]).mean()),
+        # —— 关键点级：每帧每点一个样本 ——
+        "n_kp_samples": int(kp.size),
+        "kp_px_mean": float(kp.mean()),
+        "kp_px_median": float(np.median(kp)),
+        "kp_px_p95": float(np.percentile(kp, 95)),
+        "kp_pck3": float((kp <= cfg["pck_px"][0]).mean()),
+        "kp_pck5": float((kp <= cfg["pck_px"][1]).mean()),
+        "per_kp_mean": [float(v) for v in mat.mean(axis=0)] if mat is not None else [],
+        "bias_v_max": float(np.abs(dv.mean(axis=0)).max()) if dv is not None else float("nan"),
         "nme": float(np.mean([r["nme"] for r in records])),
         "trans_median": float(np.median(trans)),
         "trans_p95": float(np.percentile(trans, 95)),
         "rot_median": float(np.median(rot)),
         "rot_p95": float(np.percentile(rot, 95)),
         "flips": int(np.sum(rot > cfg["flip_deg"])),
+        "flip_rate": float(np.mean(rot > cfg["flip_deg"])),
+        "usable": {f"{tc:g}cm/{rd:g}°": float(((trans <= tc) & (rot <= rd)).mean())
+                   for tc, rd in cfg["tolerance"]},
         "table_median": float(np.median(table)),
         "table_p95": float(np.percentile(table, 95)),
+        "table_over5": int((table > 5).sum()),
     }
     return out
 

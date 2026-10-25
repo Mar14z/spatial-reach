@@ -59,13 +59,32 @@ e_obj  = 0.5cm
 
 | 指标 | 数值 | 备注 |
 |---|---|---|
-| 2D keypoint 误差 | median 1.79px / p95 5.90px / PCK@3 76.1%（`ablation_report` 口径） | 另一份实验报告记为 2.03px / 81.4%，**两个脚本口径不一致，待统一** |
+| 2D keypoint 误差 | **关键点级**（n=4500）median 1.79px / p95 5.90px / PCK@3 76.1%<br>**帧级**（n=500）median 2.03px / p95 4.60px / PCK@3 81.4% | 同一份预测，差别只在统计单元，见 §4.1。**引用必须带级别标注** |
 | `Δ_t` | median 2.00cm / p95 7.58cm | 双峰 |
 | `Δ_θ` | median 2.36° / p95 7.97° | 双峰 |
 | `flip_rate` | **14/500 = 2.8%** | 单解 SQPNP |
 | `usable@3cm/5°` | **71.6%** | |
 | `usable@5cm/10°` | **89.6%** | |
 | 姿态误差 `Δ_θ < 5°` 的帧 | `Δ_t` p50 仅 **1.96cm** | 噪声下界：几何没问题时精度是可用的 |
+
+### 4.1 2D 指标的两级统计单元（2026-10-25 已统一）
+
+同一个预测、同一份数据曾报出 1.79px 与 2.03px 两个数。**这不是模型差异，是统计单元不同**：
+
+| 级别 | 字段前缀 | 样本定义 | n | median | p95 | PCK@3 |
+|---|---|---|---:|---|---|---|
+| 关键点级 | `kp_*` | 每帧每个点算一个样本 | 4500 | 1.79px | 5.90px | 76.1% |
+| 帧级 | `px_*` | 帧内先求均值，再跨帧统计 | 500 | 2.03px | 4.60px | 81.4% |
+
+两者的 mean 都是 **2.40px**：均值相同、分位数不同，说明帧内求均值把尾部削平了。
+
+**使用约定**：
+- 讨论位姿精度、可用率，一律用**关键点级** —— PnP 吃的就是逐点误差，逐点差才算得坏。
+- 帧级只回答「随机抽一帧，这一帧整体准不准」，不用于跨方法比较。
+- 任何引用（README、周报、面试材料）必须写明级别，不能只写「2D 误差 2.0px」。
+
+一致性靠代码结构保证：唯一实现在 `touch/learning/evaluate.py`，
+`scripts/ablation_report.py` 与 `scripts/eval_report.py` 都只是它的格式化外壳，不再各算一遍。
 
 ## 5. 本轮的三个定量结论
 
@@ -117,8 +136,12 @@ e_obj  = 0.5cm
 ## 8. 复现命令
 
 ```bash
-# 1) 当前口径的完整指标（含 flip_rate / usable@…）
+# 1) 完整指标（同时打印关键点级 / 帧级 2D、flip_rate、usable@…）
 python scripts/ablation_report.py data/synthetic/m0_kp9b_test/test outputs/eval/pred_test_gamma.json D-gamma
+
+# 1b) 同上，但额外出 report.md + result.json（含按帧 bootstrap CI）
+python scripts/eval_report.py --data data/synthetic/m0_kp9b_test/test \
+    --pred outputs/eval/pred_test_gamma.json --label "9点外抱环+gamma" --out outputs/eval/kp9b_gamma
 
 # 2) 凸耳离面距离 → 翻转率 曲线（纯几何，不重新渲染）
 python scripts/flip_vs_lever.py --frames 500
