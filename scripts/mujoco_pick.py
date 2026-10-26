@@ -5,14 +5,26 @@
 68~109mm），开口间隙 61.7mm、合到底留 ~2mm。
 
 坐标都在 arm_wrist_flex_link 系：x 径向、y 合爪轴、z 指尖方向。
+
+用法：
+    python scripts/mujoco_pick.py --view                 # 开窗口看一次抓取
+    python scripts/mujoco_pick.py --size 0.04 --az 0.4   # 无头（批量扫描必须这样）
 """
+import argparse
 import sys
+import time
 
 import mujoco
 import numpy as np
 
 sys.path.insert(0, str(__import__("pathlib").Path(__file__).resolve().parent))
 import mujoco_scene as ms
+
+# 臂正前方在世界系里的方位角：`arm_base_joint` 绕 z 转了 -90°，pan≈0 时夹爪朝
+# 世界 -y。命令行/扫描一律用「相对正前方」的方位角，否则 +0.2 就撞 pan 限位。
+AZ_FORWARD = -np.pi / 2
+# mujoco.viewer 的 passive 句柄。None = 无头：批量扫描必须保持 None。
+VIEW = None
 
 GRASP_OFFSET = np.array([0.0, 0.0, 0.0885])
 GRIP_OPEN = ms.GRIP_OPEN
@@ -24,6 +36,17 @@ W_JOINT = 0.05
 
 def skew(v):
     return np.array([[0, -v[2], v[1]], [v[2], 0, -v[0]], [-v[1], v[0], 0]])
+
+
+def _step(model, data):
+    """推进一步物理；开着窗口时顺带同步画面，并按仿真时间放慢到真实速度。"""
+    mujoco.mj_step(model, data)
+    if VIEW is None:
+        return
+    if not VIEW.is_running():
+        raise SystemExit("viewer 已关闭，中断仿真")
+    VIEW.sync()
+    time.sleep(model.opt.timestep)  # 不睡的话 0.002s 一步会瞬间跑完，看不到过程
 
 
 def _errs(model, data, body_id, p_tgt, R_tgt):
@@ -121,7 +144,7 @@ def move(model, data, q_from, q_to, grip_from, grip_to, seconds=1.5):
         for j in range(4):
             data.ctrl[j] = q_from[j] + a * (q_to[j] - q_from[j])
         data.ctrl[4] = grip_from + a * (grip_to - grip_from)
-        mujoco.mj_step(model, data)
+        _step(model, data)
 
 
 def cartesian_move(model, data, wid, R, p_from, p_to, grip, pan, steps=8, per_step=0.3,
@@ -174,12 +197,21 @@ def find_grasp_pose(model, data, wid, p_goal, azimuth=0.0, n=200000, rng=None):
 
 
 def pick(cube_size=0.03, radius=0.12, azimuth=0.0, n=200000, verbose=True,
-         jitter=0.0, seed=0):
+         jitter=0.0, seed=0, view=False):
     """jitter: 指令抓取点相对方块中心的横向偏移（米），用来注入感知误差。
-    方块不动，动的是"我以为它在哪"。"""
+    方块不动，动的是"我以为它在哪"。
+
+    view: 打开 MuJoCo passive viewer 看过程。批量扫描不要开（每格一个窗口）。
+    """
+    global VIEW
     model = ms.build_spec(cube_xy=(radius * np.cos(azimuth), radius * np.sin(azimuth)),
                           cube_size=cube_size).compile()
     data = mujoco.MjData(model)
+    if view:
+        from mujoco import viewer  # 延迟引入：无头路径不碰 glfw
+        VIEW = viewer.launch_passive(model, data)
+        print("viewer 已打开；下面枚举抓取姿态要跑几十万次 mj_forward，"
+              "窗口会短暂无响应，属正常")
     data.qpos[4] = GRIP_OPEN
     data.qpos[5] = GRIP_OPEN  # 第二指也要摆到开口位；等式约束只在积分时生效
     cube = model.body("cube").id
@@ -252,14 +284,26 @@ def pick(cube_size=0.03, radius=0.12, azimuth=0.0, n=200000, verbose=True,
         print("             pad rose %.1f mm (缺 %.1f) / cube slipped %.1f mm"
               % (pad_rise * 1000, rise_err * 1000, slip * 1000))
         print("SUCCESS" if res["ok"] else "FAILED")
+    if VIEW is not None:
+        # 先把最终姿态停在窗口里 3 秒，否则函数一返回窗口就没了，白开
+        t_end = time.time() + 3.0
+        while VIEW.is_running() and time.time() < t_end:
+            VIEW.sync()
+            time.sleep(0.02)
+        VIEW.close()
+        VIEW = None
     return res
 
 
-def main(cube_size=0.03, radius=0.12, azimuth=0.0):
-    return pick(cube_size, radius, azimuth)
+def main():
+    ap = argparse.ArgumentParser(description="单次开环抓取；--view 打开 MuJoCo 窗口")
+    ap.add_argument("--size", type=float, default=0.03, help="方块边长（m）")
+    ap.add_argument("--radius", type=float, default=0.12, help="工作半径（m）")
+    ap.add_argument("--az", type=float, default=0.0, help="相对臂正前方的方位角（弧度）")
+    ap.add_argument("--view", action="store_true", help="打开 passive viewer 看过程")
+    a = ap.parse_args()
+    return pick(a.size, a.radius, AZ_FORWARD + a.az, view=a.view)
 
 
 if __name__ == "__main__":
-    main(float(sys.argv[1]) if len(sys.argv) > 1 else 0.03,
-         float(sys.argv[2]) if len(sys.argv) > 2 else 0.12,
-         float(sys.argv[3]) if len(sys.argv) > 3 else 0.0)
+    main()

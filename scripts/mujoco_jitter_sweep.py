@@ -6,12 +6,10 @@ median 0.72cm / p90 2.07cm / p95 2.73cm，所以 0–15mm 这段才是真实工�
 import sys
 from pathlib import Path
 
-import numpy as np
-
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 import mujoco_pick as mp
 
-AZ_FORWARD = -np.pi / 2
+AZ_FORWARD = mp.AZ_FORWARD
 SIZES = (0.03, 0.04)
 RADII = (0.09, 0.13)
 JITTERS = (0.000, 0.005, 0.007, 0.010, 0.015)
