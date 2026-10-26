@@ -218,7 +218,11 @@ def pick(cube_size=0.03, radius=0.12, azimuth=0.0, n=200000, verbose=True,
     wid = model.body("arm_wrist_flex_link").id
     goal = np.array([radius * np.cos(azimuth), radius * np.sin(azimuth), cube_size / 2])
     cmd = goal.copy()
-    if jitter > 0:
+    if np.ndim(jitter) > 0:
+        # 直接给偏移向量：闭环用，误差由几何链算出来，方向和大小都是真的
+        cmd[:2] += np.asarray(jitter, dtype=float).reshape(2)
+    elif jitter > 0:
+        # 标量：随机方向注入，用于容差扫描
         a = np.random.default_rng(seed).uniform(0, 2 * np.pi)
         cmd[:2] += jitter * np.array([np.cos(a), np.sin(a)])
     dist, q_seed, p_seed, R_TARGET = find_grasp_pose(model, data, wid, cmd, azimuth, n)
