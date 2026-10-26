@@ -140,7 +140,7 @@
   <joint name="gripper_joint" type="prismatic">
     <origin xyz="0.00036977 0.02834429 0.07158491" rpy="-0 0 3.14159265"/>
     <axis xyz="0 -1 -0"/>
-    <limit effort="30" lower="0.002" upper="0.032" velocity="0.5"/>
+    <limit effort="30" lower="-0.0276" upper="0.032" velocity="0.5"/>
     <parent link="arm_wrist_flex_link"/>
     <child link="gripper_active_link"/>
   </joint>
