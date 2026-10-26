@@ -227,9 +227,15 @@ def pick(cube_size=0.03, radius=0.12, azimuth=0.0, n=200000, verbose=True,
     p_grip_end, _ = pad_pos(model, data, wid)
     in_hand = np.linalg.norm((p_end - p_grip_end)[:2])
     dz = p_end[2] - p_cube[2]
+    # 方块没抬到 80mm 有两种原因，必须拆开记：夹爪自己没走到位（伺服重力下垂 +
+    # IK 残差），还是方块相对指腹下滑（打滑）。混在一起会把可达性算成打滑。
+    pad_rise = p_grip_end[2] - p_now[2]
+    rise_err = 0.08 - pad_rise  # 夹爪相对指令少走了多少
+    slip = pad_rise - dz        # 方块相对指腹下滑了多少
     res = dict(ok=dz > 0.05 and in_hand < 0.02 and align < 0.010, dz=dz, align=align,
                in_hand=in_hand, gap=gap, q_grasp=q_grasp, pose_err=dist,
-               pre_err=pe, pre_rot=re_, jitter=jitter,
+               pre_err=pe, pre_rot=re_, jitter=jitter, pad_rise=pad_rise,
+               rise_err=rise_err, slip=slip,
                # 夹住没夹住是抓取问题；能不能抬 8cm 是这条 4 自由度臂的可达性问题。
                # 两个判据分开记，混在一起会把「抓住了但抬不到那么高」算成抓取失败。
                ok_grasp=dz > 0.02 and in_hand < 0.02)
@@ -243,6 +249,8 @@ def pick(cube_size=0.03, radius=0.12, azimuth=0.0, n=200000, verbose=True,
         print("after close: gap %.1f mm" % gap)
         print("after lift : cube", np.round(p_end, 4), "dz = %.3f m" % dz,
               "in-hand offset %.1f mm" % (in_hand * 1000))
+        print("             pad rose %.1f mm (缺 %.1f) / cube slipped %.1f mm"
+              % (pad_rise * 1000, rise_err * 1000, slip * 1000))
         print("SUCCESS" if res["ok"] else "FAILED")
     return res
 

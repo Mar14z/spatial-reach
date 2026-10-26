@@ -39,7 +39,7 @@ def _make(tmp_path, n_seq=2, n_frames=4, seed=0):
             }), encoding="utf-8")
             R1, t1, _ = solve_pnp(K, p3, p2, use_ransac=False)
             records.append({
-                "frame": name, "pnp_ok": True, "_seq": s, "_K": K.tolist(),
+                "frame": name, "pnp_ok": True, "_seq": s, "_k": k, "_K": K.tolist(),
                 "_p3": p3.tolist(), "_p2": p2.tolist(),
                 "_R": R1.ravel().tolist(), "_t": t1.ravel().tolist(),
                 "trans_cm": 99.0, "rot_deg": 99.0, "flip": True, "table_cm": 99.0,
@@ -66,3 +66,11 @@ def test_short_sequence_is_skipped(tmp_path):
     records = _make(tmp_path, n_frames=2)
     st = apply_calibrate_once(records, tmp_path, CFG, (0, 3))
     assert st["n_seq"] == 0 and st["n_online"] == 0
+
+
+def test_missing_calib_frame_is_skipped_not_shifted(tmp_path):
+    """首帧缺失时只能显式跳过：按位次挪成 (1,3) 会把 30° 基线降成 20°。"""
+    records = [r for r in _make(tmp_path) if not (r["_seq"] == 0 and r["_k"] == 0)]
+    st = apply_calibrate_once(records, tmp_path, CFG, (0, 3))
+    assert st["n_skipped"] == 1 and st["n_seq"] == 1
+    assert sum(1 for r in records if "_calib" in r) == 4  # 只处理了完整的那个序列
