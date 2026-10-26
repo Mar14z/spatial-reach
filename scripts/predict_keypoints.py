@@ -86,7 +86,10 @@ def main():
     all_errors = []
     for index in range(len(dataset)):
         sample = dataset[index]
-        image = torch.from_numpy(sample["image"]).permute(2, 0, 1)[None]
+        # 与 collate 同理：permute 只改 strides，不补齐连续内存 cuDNN 会走慢路径
+        image = torch.from_numpy(
+            np.ascontiguousarray(sample["image"].transpose(2, 0, 1))
+        )[None]
         image = F.interpolate(
             image, size=(in_h, in_w), mode="bilinear", align_corners=False
         )
