@@ -159,6 +159,63 @@ def apply_sequence_solve(records, data_dir, cfg=None):
     return changed
 
 
+def apply_calibrate_once(records, data_dir, cfg=None, calib_idx=(0, 3)):
+    """标一次 T：每序列只用 calib_idx 指定的两帧联合解一次位姿，其余帧**不再解 PnP**。
+
+    与 apply_sequence_solve 的区别是那个要先把所有帧都解一遍再覆写；这里在线帧
+    完全不解，直接用标定出来的 T。相机不动时序列内各帧的 GT 位姿相同，所以
+    「按帧统计」是重复采样同一个样本，报告里按序列计。
+
+    返回 dict：序列数、标定帧/在线帧的重投影 RMS、以及按序列统计的容差达标数。
+    """
+    cfg = PROTOCOL if cfg is None else cfg
+    groups: dict = {}
+    for i, r in enumerate(records):
+        if r["pnp_ok"] and r.get("_seq") is not None:
+            groups.setdefault(r["_seq"], []).append(i)
+    st = {"n_seq": 0, "calib_rms": [], "online_rms": [], "trans_cm": [], "rot_deg": [],
+          "n_within": 0, "n_online": 0}
+    tol_t, tol_r = cfg["tolerance"][0]
+    for _, idx in sorted(groups.items()):
+        metas = [json.loads((Path(data_dir) / records[i]["frame"] / "meta.json").read_text(encoding="utf-8"))
+                 for i in idx]
+        order = [i for i, _ in sorted(zip(idx, metas), key=lambda t: t[1]["frame_in_seq"])]
+        if len(order) <= max(calib_idx):
+            continue
+        calib = [order[j] for j in calib_idx]
+        K = np.asarray(records[calib[0]]["_K"], np.float64).reshape(3, 3)
+        obs = [(records[i]["_p3"], np.asarray(records[i]["_p2"], np.float64)) for i in calib]
+        seeds = [(np.asarray(records[i]["_R"]).reshape(3, 3), np.asarray(records[i]["_t"])) for i in calib]
+        try:
+            R, t, _, _ = solve_pnp_sequence(K, obs, seeds)
+        except Exception:
+            continue
+        rvec = cv2.Rodrigues(R)[0]
+        # 相机不动 → 序列内 GT 位姿相同，误差只算一次
+        meta0 = metas[order.index(calib[0])]
+        R_gt, t_gt = np.asarray(meta0["R_cb"], np.float64), np.asarray(meta0["t_cb"], np.float64)
+        trans, rot = pose_error(R, t, R_gt, t_gt)
+        table = _table_error(K, R, t, R_gt, t_gt, cfg)
+        within = trans <= tol_t and rot <= tol_r
+        st["n_seq"] += 1
+        st["trans_cm"].append(float(trans))
+        st["rot_deg"].append(float(rot))
+        st["n_within"] += int(within)
+        for i in order:
+            p3, p2 = np.asarray(records[i]["_p3"], np.float64), np.asarray(records[i]["_p2"], np.float64)
+            uv, _ = cv2.projectPoints(p3, rvec, t, K, None)
+            rms = float(np.sqrt(np.mean(np.sum((uv.reshape(-1, 2) - p2) ** 2, axis=1))))
+            online = i not in calib
+            st["online_rms" if online else "calib_rms"].append(rms)
+            st["n_online"] += int(online)
+            records[i].update({
+                "trans_cm": trans, "rot_deg": rot,
+                "flip": bool(rot > cfg["flip_deg"]), "table_cm": table,
+                "_calib": "online" if online else "calib",
+            })
+    return st
+
+
 def summarize(records, cfg=None):
     cfg = PROTOCOL if cfg is None else cfg
     ok = [r for r in records if r["pnp_ok"]]

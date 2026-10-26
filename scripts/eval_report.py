@@ -18,6 +18,7 @@ ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
 
 from touch.learning.evaluate import (
+    apply_calibrate_once,
     apply_sequence_solve,
     bootstrap_ci,
     evaluate_frames,
@@ -78,6 +79,17 @@ def main():
         action="store_true",
         help="同一序列多帧联合重解相机位姿（要求序列内相机不动）",
     )
+    ap.add_argument(
+        "--calibrate-once",
+        action="store_true",
+        help="每个序列只用两帧标定一次 T，其余帧不再解 PnP（在线帧单独统计）",
+    )
+    ap.add_argument(
+        "--calib-idx",
+        type=str,
+        default="0,3",
+        help="标定用哪两帧（按序列内序号），默认 0,3 = 相隔 30°",
+    )
     args = ap.parse_args()
 
     frames, _ = load_predictions(args.pred)
@@ -89,6 +101,16 @@ def main():
     if args.sequence_solve:
         n_changed = apply_sequence_solve(records, args.data, cfg)
         print(f"序列联解：改写 {n_changed} 帧的翻转判定")
+    if args.calibrate_once:
+        idx = tuple(int(v) for v in args.calib_idx.split(","))
+        st = apply_calibrate_once(records, args.data, cfg, idx)
+        records = [r for r in records if r.get("_calib") == "online"]
+        print(f"标一次：{st['n_seq']} 个序列 × 两帧 {idx} 联合解 T，"
+              f"在线帧 {st['n_online']}（这些帧没解 PnP）")
+        print(f"  标定帧重投影 RMS {np.mean(st['calib_rms']):.2f}px   "
+              f"在线帧 RMS {np.mean(st['online_rms']):.2f}px")
+        print(f"  按序列达标@{cfg['tolerance'][0][0]:g}cm/{cfg['tolerance'][0][1]:g}°："
+              f"{st['n_within']}/{st['n_seq']} = {st['n_within']/max(st['n_seq'], 1)*100:.1f}%")
     s = summarize(records, cfg)
     ci = bootstrap_ci(records, n=args.bootstrap) if args.bootstrap else {}
 
