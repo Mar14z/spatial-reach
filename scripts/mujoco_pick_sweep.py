@@ -8,12 +8,10 @@
 import sys
 from pathlib import Path
 
-import numpy as np
-
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 import mujoco_pick as mp
 
-AZ_FORWARD = -np.pi / 2  # 臂正前方在世界系里的方位角
+AZ_FORWARD = mp.AZ_FORWARD  # 定义在 mujoco_pick：臂正前方在世界系里的方位角
 SIZES = (0.03, 0.04)
 RADII = (0.09, 0.11, 0.13, 0.15)
 AZIMUTHS = (-0.4, 0.0, 0.4)
