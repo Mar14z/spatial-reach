@@ -88,7 +88,7 @@ def main():
         "--calib-idx",
         type=str,
         default="0,3",
-        help="标定用哪两帧（按序列内序号），默认 0,3 = 相隔 30°",
+        help="标定用哪两帧（按 frame_in_seq 序号），默认 0,3 = 相隔 30°",
     )
     args = ap.parse_args()
 
@@ -111,6 +111,8 @@ def main():
               f"在线帧 RMS {np.mean(st['online_rms']):.2f}px")
         print(f"  按序列达标@{cfg['tolerance'][0][0]:g}cm/{cfg['tolerance'][0][1]:g}°："
               f"{st['n_within']}/{st['n_seq']} = {st['n_within']/max(st['n_seq'], 1)*100:.1f}%")
+        if st["n_skipped"]:
+            print(f"  跳过 {st['n_skipped']} 个序列：标定帧缺失或单帧解失败（不计入分母）")
     s = summarize(records, cfg)
     ci = bootstrap_ci(records, n=args.bootstrap) if args.bootstrap else {}
 
@@ -130,6 +132,9 @@ def main():
           f"flips {s['flips']} ({s['flip_rate']*100:.1f}%)")
     print("use  " + "   ".join(f"@{k} {v*100:.1f}%" for k, v in s["usable"].items()))
     print(f"tbl  median {s['table_median']:.2f}  p95 {fmt(s['table_p95'], ci.get('table_p95'), 'cm')}")
+    # 夹爪容差是悬崖：超过就抓不到，中位数、p95 都看不出「多少比例会失败」。
+    tol_mm = cfg["grasp_tol_cm"] * 10
+    print(f"抓取 P(桌面误差≤{tol_mm:g}mm) {s['p_within_grip']*100:.1f}%  ← 抓取成功率的预测值")
 
     st = strata(records, cfg)
     if st:
@@ -165,7 +170,8 @@ def main():
             f"| flips | {s['flips']} ({s['flip_rate']*100:.1f}%) | — |\n"
             + "".join(f"| usable @{k} | {v*100:.1f}% | — |\n" for k, v in s["usable"].items())
             + f"| table median (cm) | {s['table_median']:.2f} | — |\n"
-            f"| table p95 (cm) | {s['table_p95']:.2f} | {ci.get('table_p95')} |\n",
+            f"| table p95 (cm) | {s['table_p95']:.2f} | {ci.get('table_p95')} |\n"
+            f"| P(桌面误差 ≤ {tol_mm:g}mm) | {s['p_within_grip']*100:.1f}% | — |\n",
             encoding="utf-8",
         )
         (args.out / "report.md").write_text(

@@ -31,6 +31,9 @@ PROTOCOL = {
     "grid_y": (-0.2, 0.2, 5),
     # 可用率的分级容差 (平移 cm, 旋转 deg)：两者同时满足才算「这一帧可用」
     "tolerance": ((3.0, 5.0), (5.0, 10.0)),
+    # 夹爪横向容差（cm）：注入偏移实测 15mm 起开始失败，是悬崖不是软边界。
+    # 抓取成功率该用 P(桌面误差 ≤ 此值) 预测，中位数和 3cm 可用率都看不出来。
+    "grasp_tol_cm": 1.5,
 }
 
 
@@ -92,7 +95,11 @@ def evaluate_frames(data_dir, pred_frames, extra=None, cfg=None):
             "spread2d": float(s2[1] / s2[0]) if len(gt) > 2 else np.nan,
             "pnp_ok": False,
             "_seq": meta.get("sequence"),
+            "_k": meta.get("frame_in_seq"),
         }
+        # 这三项与 PnP 成败无关，不放进 try：在线帧重投影 RMS 恰恰最需要「单帧解
+        # 失败」的那些帧，放进 try 会把最难的一批样本悄悄排除。
+        rec.update({"_K": K.tolist(), "_p3": p3.tolist(), "_p2": p2.tolist()})
         try:
             R, t, _ = solve_pnp(K, p3, p2, cfg["reproj_threshold_px"], False, cfg["solver"])
             trans, rot = pose_error(R, t, R_gt, t_gt)
@@ -104,9 +111,6 @@ def evaluate_frames(data_dir, pred_frames, extra=None, cfg=None):
                 "table_cm": _table_error(K, R, t, R_gt, t_gt, cfg),
                 "_R": [float(v) for v in np.asarray(R).ravel()],
                 "_t": [float(v) for v in np.asarray(t).ravel()],
-                "_K": K.tolist(),
-                "_p3": p3.tolist(),
-                "_p2": p2.tolist(),
             })
         except Exception as exc:
             rec["error"] = str(exc)
@@ -159,8 +163,8 @@ def apply_sequence_solve(records, data_dir, cfg=None):
     return changed
 
 
-def apply_calibrate_once(records, data_dir, cfg=None, calib_idx=(0, 3)):
-    """标一次 T：每序列只用 calib_idx 指定的两帧联合解一次位姿，其余帧**不再解 PnP**。
+def apply_calibrate_once(records, data_dir, cfg=None, calib_frames=(0, 3)):
+    """标一次 T：每序列只用 frame_in_seq 为 calib_frames 的两帧联合解一次位姿，其余帧**不再解 PnP**。
 
     与 apply_sequence_solve 的区别是那个要先把所有帧都解一遍再覆写；这里在线帧
     完全不解，直接用标定出来的 T。相机不动时序列内各帧的 GT 位姿相同，所以
@@ -169,20 +173,24 @@ def apply_calibrate_once(records, data_dir, cfg=None, calib_idx=(0, 3)):
     返回 dict：序列数、标定帧/在线帧的重投影 RMS、以及按序列统计的容差达标数。
     """
     cfg = PROTOCOL if cfg is None else cfg
-    groups: dict = {}
+    by_seq: dict = {}
     for i, r in enumerate(records):
-        if r["pnp_ok"] and r.get("_seq") is not None:
-            groups.setdefault(r["_seq"], []).append(i)
+        if r.get("_seq") is not None and r.get("_k") is not None:
+            by_seq.setdefault(r["_seq"], {})[r["_k"]] = i
     st = {"n_seq": 0, "calib_rms": [], "online_rms": [], "trans_cm": [], "rot_deg": [],
-          "n_within": 0, "n_online": 0}
+          "n_within": 0, "n_online": 0, "n_skipped": 0}
     tol_t, tol_r = cfg["tolerance"][0]
-    for _, idx in sorted(groups.items()):
-        metas = [json.loads((Path(data_dir) / records[i]["frame"] / "meta.json").read_text(encoding="utf-8"))
-                 for i in idx]
-        order = [i for i, _ in sorted(zip(idx, metas), key=lambda t: t[1]["frame_in_seq"])]
-        if len(order) <= max(calib_idx):
+    for _, by_k in sorted(by_seq.items()):
+        # 标定帧按 frame_in_seq 取，不能按「单帧解成功的帧」里的位次取：后者在首帧
+        # 失败时会把 30° 基线悄悄换成 20°，而统计仍记在「两帧 30°」名下。取不到就
+        # 显式计入跳过数，不静默缩分母。
+        if any(k not in by_k or not records[by_k[k]]["pnp_ok"] for k in calib_frames):
+            st["n_skipped"] += 1
             continue
-        calib = [order[j] for j in calib_idx]
+        calib = [by_k[k] for k in calib_frames]
+        order = [by_k[k] for k in sorted(by_k)]
+        metas = [json.loads((Path(data_dir) / records[i]["frame"] / "meta.json").read_text(encoding="utf-8"))
+                 for i in order]
         K = np.asarray(records[calib[0]]["_K"], np.float64).reshape(3, 3)
         obs = [(records[i]["_p3"], np.asarray(records[i]["_p2"], np.float64)) for i in calib]
         seeds = [(np.asarray(records[i]["_R"]).reshape(3, 3), np.asarray(records[i]["_t"])) for i in calib]
@@ -256,6 +264,9 @@ def summarize(records, cfg=None):
         "table_median": float(np.median(table)),
         "table_p95": float(np.percentile(table, 95)),
         "table_over5": int((table > 5).sum()),
+        # 抓取看的是悬崖不是中位数：夹爪横向容差之外直接失败，这个概率才是抓取
+        # 成功率的预测值，中位数和 3cm 可用率都反映不出来。
+        "p_within_grip": float(np.mean(table <= cfg["grasp_tol_cm"])),
     }
     return out
 
