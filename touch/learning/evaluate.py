@@ -220,6 +220,9 @@ def apply_calibrate_once(records, data_dir, cfg=None, calib_frames=(0, 3)):
                 "trans_cm": trans, "rot_deg": rot,
                 "flip": bool(rot > cfg["flip_deg"]), "table_cm": table,
                 "_calib": "online" if online else "calib",
+                # 标出来的 T 本身也要能取用：闭环要拿它把方块像素反投影回桌面
+                "_Rc": np.asarray(R).ravel().tolist(),
+                "_tc": np.asarray(t).ravel().tolist(),
             })
     return st
 
