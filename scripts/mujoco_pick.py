@@ -22,7 +22,8 @@ import mujoco_scene as ms
 
 # 臂正前方在世界系里的方位角：`arm_base_joint` 绕 z 转了 -90°，pan≈0 时夹爪朝
 # 世界 -y。命令行/扫描一律用「相对正前方」的方位角，否则 +0.2 就撞 pan 限位。
-AZ_FORWARD = -np.pi / 2
+# 单一来源在 experiment_config，渲染脚本不需要为此导入 MuJoCo。
+from experiment_config import AZ_FORWARD  # noqa: E402
 # mujoco.viewer 的 passive 句柄。None = 无头：批量扫描必须保持 None。
 VIEW = None
 
@@ -197,12 +198,18 @@ def find_grasp_pose(model, data, wid, p_goal, azimuth=0.0, n=200000, rng=None):
 
 
 def pick(cube_size=0.03, radius=0.12, azimuth=0.0, n=200000, verbose=True,
-         jitter=0.0, seed=0, view=False):
+         jitter=0.0, seed=0, view=False, command_xy=None):
     """jitter: 指令抓取点相对方块中心的横向偏移（米），用来注入感知误差。
     方块不动，动的是"我以为它在哪"。
 
+    command_xy: 感知或记忆给出的基座系指令点，不能与 jitter 同时使用。
+    radius/azimuth 仅描述环境真值；规划方位由最终指令点计算。
     view: 打开 MuJoCo passive viewer 看过程。批量扫描不要开（每格一个窗口）。
     """
+    if command_xy is not None:
+        command_xy = np.asarray(command_xy, dtype=float).reshape(2)
+        if not np.isfinite(command_xy).all() or np.any(np.asarray(jitter) != 0):
+            raise ValueError("指令点必须有限，且不能同时指定 jitter")
     global VIEW
     model = ms.build_spec(cube_xy=(radius * np.cos(azimuth), radius * np.sin(azimuth)),
                           cube_size=cube_size).compile()
@@ -225,7 +232,15 @@ def pick(cube_size=0.03, radius=0.12, azimuth=0.0, n=200000, verbose=True,
         # 标量：随机方向注入，用于容差扫描
         a = np.random.default_rng(seed).uniform(0, 2 * np.pi)
         cmd[:2] += jitter * np.array([np.cos(a), np.sin(a)])
-    dist, q_seed, p_seed, R_TARGET = find_grasp_pose(model, data, wid, cmd, azimuth, n)
+    if command_xy is not None:
+        cmd[:2] = command_xy
+    if not np.isfinite(cmd).all():
+        raise ValueError("抓取指令包含非有限值")
+    command_azimuth = float(np.arctan2(cmd[1], cmd[0]))
+    candidate = find_grasp_pose(model, data, wid, cmd, command_azimuth, n)
+    if candidate is None:
+        raise ValueError("未找到满足约束的抓取姿态")
+    dist, q_seed, p_seed, R_TARGET = candidate
     pe_g, re_g, q_grasp = solve_ik(model, data, wid, cmd, R_TARGET, q_prev=q_seed)
     adr = model.jnt_qposadr[model.joint("cube_free").id]
     data.qpos[adr:adr + 3] = goal

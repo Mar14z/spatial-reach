@@ -33,17 +33,10 @@ sys.path.insert(0, str(ROOT))
 sys.path.insert(0, str(ROOT / "scripts"))
 import mujoco_pick as mp  # noqa: E402
 from touch.learning.evaluate import (  # noqa: E402
-    apply_calibrate_once, evaluate_frames, load_predictions,
+    apply_calibrate_once, evaluate_frames, load_predictions, trial_summary, write_result,
 )
 from touch.perception.geometry import backproject_to_plane  # noqa: E402
-
-# 方块真实位置：落在 mujoco_pick_sweep 验证过可达的区间内（r 0.09–0.15、
-# 方位角相对臂正前方 ±0.4），但不要正好踩在扫描格点上。
-CELLS = ((0.10, 0.0), (0.12, -0.3), (0.12, 0.3), (0.14, 0.0))
-# 只改方位角、保留每个格子的半径和出现次数：CELLS 里 r=0.12 只配了 ±0.3，
-# 一旦失败集中在 r=0.12 就分不清是半径还是偏离光轴。这组用来拆开两者。
-CELLS_AZ0 = ((0.10, 0.0), (0.12, 0.0), (0.12, 0.0), (0.14, 0.0))
-TOL_MM = 15.0  # 夹爪横向容差，注入实验里开始失败的量级
+from experiment_config import CELLS, CELLS_AZ0, TOL_MM  # noqa: E402
 
 # 可扩样本集：val 是同分布验证集，mild/hard 是分布外序列（翻转率更高，
 # 正好拿来压失败样本）。三个集都是 4 帧/序列，帧 0/3 标定、1/2 留出。
@@ -86,13 +79,14 @@ def main() -> None:
                     help="spread=方位角散开（默认）; zero=全摆正前方，用于拆半径/偏轴")
     ap.add_argument("--limit", type=int, default=0, help="每个集只跑前 N 个序列")
     ap.add_argument("--no-sim", action="store_true", help="只算误差不仿真（秒级，用于口径对比）")
-    ap.add_argument("--out", default=str(ROOT / "outputs/eval/closed_loop.json"))
+    ap.add_argument("--out", default=str(ROOT / "outputs/eval/closed_loop_v3.json"))
     a = ap.parse_args()
 
     calib = None if a.calib == "none" else tuple(int(x) for x in a.calib.split(","))
     ks = [int(x) for x in a.frames.split(",")]
     cells = CELLS if a.az_mode == "spread" else CELLS_AZ0
-    rng = np.random.default_rng(0)
+    if a.limit < 0 or not ks or len(set(ks)) != len(ks):
+        ap.error("limit 必须非负，抓取帧必须非空且不重复")
     rows: list = []
 
     for name in a.sets.split(","):
@@ -103,7 +97,8 @@ def main() -> None:
         if calib is not None:
             st = apply_calibrate_once(records, data, cfg, calib)
             print(f"[{name}] 标定帧 {a.calib} 联合：{st['n_seq']} 个序列，"
-                  f"跳过 {st['n_skipped']} 个；抓取帧 {ks}，仿真={not a.no_sim}")
+                  f"跳过 {st['n_skipped']} 个，物理拒识 {st.get('n_rejected', 0)} 个；"
+                  f"抓取帧 {ks}，仿真={not a.no_sim}")
         else:
             print(f"[{name}] 逐帧单解基线；抓取帧 {ks}，仿真={not a.no_sim}")
 
@@ -117,8 +112,15 @@ def main() -> None:
 
         for seq, by_k in order:
             for k in ks:
+                radius, az_rel = cells[(2 * int(seq) + int(k) - 1) % len(cells)]
+                row = {"set": name, "seq": int(seq), "k": int(k), "radius": radius,
+                       "az_rel": az_rel, "err_mm": None, "status": "missing_frame"}
+                rows.append(row)
                 r = by_k.get(k)
-                if r is None or not r.get("pnp_ok"):
+                if r is None:
+                    continue
+                if calib is None and not r.get("pnp_ok"):
+                    row["status"] = "pose_failed"
                     continue
                 if calib is None:
                     R_est = np.asarray(r["_R"], float).reshape(3, 3)
@@ -127,11 +129,11 @@ def main() -> None:
                     R_est = np.asarray(r["_Rc"], float).reshape(3, 3)
                     t_est = np.asarray(r["_tc"], float).reshape(3)
                 else:
+                    row["status"] = "calibration_" + r.get("_calib_status", "failed")
                     continue  # 该序列标定失败
 
                 K = np.asarray(r["_K"], float)
                 meta = json.loads((data / r["frame"] / "meta.json").read_text(encoding="utf-8"))
-                radius, az_rel = cells[len(rows) % len(cells)]
                 az = mp.AZ_FORWARD + az_rel
                 p_true = np.array([radius * np.cos(az), radius * np.sin(az), 0.0])
                 uv, _ = cv2.projectPoints(
@@ -140,41 +142,59 @@ def main() -> None:
                 uv = uv.reshape(2)
                 inside = 0 <= uv[0] < meta["width"] and 0 <= uv[1] < meta["height"]
                 if a.det_px > 0:
-                    uv = uv + rng.normal(0.0, a.det_px, 2)
+                    import hashlib
+                    key = f"{name}:{seq}:{k}".encode("utf-8")
+                    seed = int.from_bytes(hashlib.sha256(key).digest()[:8], "little")
+                    uv = uv + np.random.default_rng(seed).normal(0.0, a.det_px, 2)
                 p_est = backproject_to_plane(K, uv, R_est, t_est, 0.0)[0]
+                if not np.isfinite(p_est).all() or (R_est @ p_est + t_est)[2] <= 0:
+                    row["status"] = "geometry_failed"
+                    continue
                 err_mm = float(np.linalg.norm((p_est - p_true)[:2])) * 1000.0
                 # 本帧在标定 T 下的重投影残差：部署时算得出来（不用 GT），可当质量分
                 uv_fit, _ = cv2.projectPoints(
                     np.asarray(r["_p3"], float), cv2.Rodrigues(R_est)[0], t_est, K, None)
                 rms_px = float(np.sqrt(np.mean(np.sum(
                     (uv_fit.reshape(-1, 2) - np.asarray(r["_p2"], float)) ** 2, axis=1))))
-                row = {"set": name, "seq": int(seq), "k": int(k), "radius": radius,
-                       "az_rel": az_rel, "uv": uv.tolist(), "visible": bool(inside),
+                row.update({"status": "geometry_only" if a.no_sim else "executed",
+                       "uv": uv.tolist(), "visible": bool(inside),
                        "err_mm": err_mm, "rms_px": rms_px, "trans_cm": r.get("trans_cm"),
                        "rot_deg": r.get("rot_deg"), "flip": r.get("flip"),
-                       "table_cm": r.get("table_cm"), "kp_px": r.get("mean_px")}
+                       "table_cm": r.get("table_cm"), "kp_px": r.get("mean_px"),
+                       # 退化解边距（部署时可算，不用 GT）：双峰歧义 → 解不可信
+                       "gap_px": r.get("_gap_px"), "command_xy": p_est[:2].tolist()})
                 if a.no_sim:
                     tag = "-"
                 else:
-                    res = mp.pick(0.03, radius, az, verbose=False, jitter=(p_est - p_true)[:2])
-                    # ok_grasp 才是夹爪容差判据（注入实验 20/20 用的就是它）；ok 额外要求
-                    # align<10mm，比夹爪实际能力严，标成 OK* 区分开。
+                    try:
+                        res = mp.pick(0.03, radius, az, verbose=False, command_xy=p_est[:2])
+                    except (ValueError, RuntimeError) as exc:
+                        row.update(status="execution_failed", error=str(exc))
+                        continue
+                    # ok 还要求抬升超过 5cm 且 align<10mm；ok_grasp 的抬升门限为 2cm。
                     tag = "OK" if res["ok"] else ("OK*" if res["ok_grasp"] else "FAIL")
                     row.update({"ok": bool(res["ok"]), "ok_grasp": bool(res["ok_grasp"]),
                                 "align_mm": res["align"] * 1000,
                                 "in_hand_mm": res["in_hand"] * 1000,
                                 "dz_mm": res["dz"] * 1000, "slip_mm": res["slip"] * 1000,
                                 "pad_rise_mm": res["pad_rise"] * 1000, "gap_mm": res["gap"]})
-                rows.append(row)
                 print(f"[{name}] {len(rows):4d} seq={seq:3d} k={k} r={radius:.2f} "
                       f"az{az_rel:+.1f} err={err_mm:5.1f}mm {tag:5s}"
                       + ("" if inside else "  [方块出画]"), flush=True)
 
+    all_rows = rows
+    totals = trial_summary(all_rows, no_sim=a.no_sim)
+    rows = [r for r in all_rows if r["status"] in ("executed", "geometry_only")]
     e = np.array([r["err_mm"] for r in rows])
-    print(f"\n=== n={len(rows)} 次取点 ===")
-    print(f"取点误差 median {np.median(e):.1f}mm  p95 {np.percentile(e, 95):.1f}mm  "
-          f"P(≤{TOL_MM:.0f}mm) {np.mean(e <= TOL_MM):.1%}  max {e.max():.1f}mm")
+    print(f"\n=== 计划 {totals['n_planned']}，实际执行 {totals['n_attempted']} ===")
+    print("任务状态：", totals["status_counts"])
     if not a.no_sim:
+        print("执行后成功率：", totals["attempt_success_rate"],
+              "全部任务成功率：", totals["end_to_end_success_rate"])
+    if len(e):
+        print(f"取点误差 median {np.median(e):.1f}mm  p95 {np.percentile(e, 95):.1f}mm  "
+              f"P(≤{TOL_MM:.0f}mm) {np.mean(e <= TOL_MM):.1%}  max {e.max():.1f}mm")
+    if not a.no_sim and rows:
         grasp = np.array([r["ok_grasp"] for r in rows])
         ok = np.array([r["ok"] for r in rows])
         print(f"抓到 {grasp.sum()}/{len(rows)} = {grasp.mean():.1%}   "
@@ -205,10 +225,11 @@ def main() -> None:
             print(f"  [{name}] n={m.sum():3d} 误差中位 {np.median(e[m]):5.1f}mm "
                   f"P(≤{TOL_MM:.0f}mm) {np.mean(e[m] <= TOL_MM):.1%}{extra}")
 
-    Path(a.out).write_text(json.dumps(
+    write_result(a.out,
         {"sets": a.sets, "calib": a.calib, "frames": ks, "det_px": a.det_px,
-         "az_mode": a.az_mode, "no_sim": a.no_sim, "tol_mm": TOL_MM, "rows": rows},
-        ensure_ascii=False, indent=2), encoding="utf-8")
+         "protocol_version": 3, "target_source": "gt_projection_proxy",
+         "az_mode": a.az_mode, "no_sim": a.no_sim, "tol_mm": TOL_MM,
+         "task_summary": totals, "rows": all_rows})
     print("saved", a.out)
 
 
