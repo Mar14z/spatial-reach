@@ -1,0 +1,601 @@
+{
+  "schema_version": 1,
+  "kind": "a03_reference_frames",
+  "note": "名单在跑比对之前固定；不允许按比对结果回头替换",
+  "dataset": "data/synthetic/m0_seq/val",
+  "selection": {
+    "source": "仅 meta.json 的真值字段，不加载权重、不读模型输出",
+    "categories": [
+      "normal",
+      "dim",
+      "edge",
+      "collinear",
+      "hard"
+    ],
+    "per_category": 4,
+    "total": 20,
+    "brightness_proxy": "light.ambient * light.diffuse",
+    "min_border_px": "任一点到画面四边的最小距离（越小越贴边）",
+    "axis_ratio": "9 点 2D 的 PCA 主轴/末轴标准差之比（越小越共线）",
+    "distance_m": "相机到目标的距离（越小目标尺度越大）",
+    "hull_scale_px": "有效点包围盒对角线（越小越集中）",
+    "sequence_dedup": "同一序列只取一帧"
+  },
+  "frames": [
+    {
+      "frame_dir": "000008",
+      "frame": 8,
+      "sequence": 2,
+      "category": "normal",
+      "features": {
+        "brightness_proxy": 0.4456043378742996,
+        "min_border_px": 124.56091182479446,
+        "axis_ratio": 1.6971009521621199,
+        "hull_scale_px": 200.35439987890038,
+        "distance_m": 0.5724454799602116,
+        "pitch_deg": -8.777365621098525,
+        "invalid_points": 0
+      },
+      "link_names": [
+        "kp_base",
+        "kp_shoulder_pan",
+        "kp_shoulder_lift",
+        "kp_upper_mid",
+        "kp_elbow",
+        "kp_forearm_mid",
+        "kp_wrist",
+        "kp_wrist_mid",
+        "kp_gripper_base"
+      ],
+      "meta_sha256": "23dcf97a958fc75edf8d9c9e3a9c0171bd3b5b423c8804405f1a61cf839284e6",
+      "rgb_sha256": "5d44362cf5e6869ad31407f118f97bdb755f66363a3fe33792af9e9af5cc994a"
+    },
+    {
+      "frame_dir": "000080",
+      "frame": 80,
+      "sequence": 20,
+      "category": "normal",
+      "features": {
+        "brightness_proxy": 0.4423036533754871,
+        "min_border_px": 108.97620627969934,
+        "axis_ratio": 1.2247488519347876,
+        "hull_scale_px": 180.41675566378694,
+        "distance_m": 0.4220636971929056,
+        "pitch_deg": -18.398989669851087,
+        "invalid_points": 0
+      },
+      "link_names": [
+        "kp_base",
+        "kp_shoulder_pan",
+        "kp_shoulder_lift",
+        "kp_upper_mid",
+        "kp_elbow",
+        "kp_forearm_mid",
+        "kp_wrist",
+        "kp_wrist_mid",
+        "kp_gripper_base"
+      ],
+      "meta_sha256": "3a99968644fe2b609a606aa5a59f9b7ac2695c29998a668fa53f4d5c5c7a01f4",
+      "rgb_sha256": "a90ca4bf96f31132d47d3d70ae10c8ad768840b45a196608c1a457ef19a802bd"
+    },
+    {
+      "frame_dir": "000292",
+      "frame": 292,
+      "sequence": 73,
+      "category": "normal",
+      "features": {
+        "brightness_proxy": 0.44180357728465436,
+        "min_border_px": 101.91101185396633,
+        "axis_ratio": 16.160822264303675,
+        "hull_scale_px": 218.81692567304015,
+        "distance_m": 0.4133882568715276,
+        "pitch_deg": -23.27401844641937,
+        "invalid_points": 0
+      },
+      "link_names": [
+        "kp_base",
+        "kp_shoulder_pan",
+        "kp_shoulder_lift",
+        "kp_upper_mid",
+        "kp_elbow",
+        "kp_forearm_mid",
+        "kp_wrist",
+        "kp_wrist_mid",
+        "kp_gripper_base"
+      ],
+      "meta_sha256": "ebd4dfcd2bae807db909950fdeceacc46313bc88acb72749fc84caa613a18909",
+      "rgb_sha256": "508fd97974314888a2663cef9a50be51b3c17f8c527e42926c47a1340ef14a22"
+    },
+    {
+      "frame_dir": "000168",
+      "frame": 168,
+      "sequence": 42,
+      "category": "normal",
+      "features": {
+        "brightness_proxy": 0.44123051347911735,
+        "min_border_px": 70.91307739774322,
+        "axis_ratio": 11.469026585149166,
+        "hull_scale_px": 276.97112505089416,
+        "distance_m": 0.3696946924414361,
+        "pitch_deg": -19.247428195929125,
+        "invalid_points": 0
+      },
+      "link_names": [
+        "kp_base",
+        "kp_shoulder_pan",
+        "kp_shoulder_lift",
+        "kp_upper_mid",
+        "kp_elbow",
+        "kp_forearm_mid",
+        "kp_wrist",
+        "kp_wrist_mid",
+        "kp_gripper_base"
+      ],
+      "meta_sha256": "8eb17aa5029925cddda74a59fce3457b3dbc0079f5df3a6767258201e37bc467",
+      "rgb_sha256": "ce46e56111333ce75a2ad4063ecb775a8f38c43b12efc9dc3814876ddf1102d8"
+    },
+    {
+      "frame_dir": "000040",
+      "frame": 40,
+      "sequence": 10,
+      "category": "dim",
+      "features": {
+        "brightness_proxy": 0.3103018276029844,
+        "min_border_px": 148.35286491359562,
+        "axis_ratio": 7.5388117726040145,
+        "hull_scale_px": 175.49303516839126,
+        "distance_m": 0.7925003819219935,
+        "pitch_deg": -10.338821176412893,
+        "invalid_points": 0
+      },
+      "link_names": [
+        "kp_base",
+        "kp_shoulder_pan",
+        "kp_shoulder_lift",
+        "kp_upper_mid",
+        "kp_elbow",
+        "kp_forearm_mid",
+        "kp_wrist",
+        "kp_wrist_mid",
+        "kp_gripper_base"
+      ],
+      "meta_sha256": "737343a76bf6bb3838c4d68e8a40ec8e5569964f5d90aea3be1d14ea9d93a07a",
+      "rgb_sha256": "a4df8ba8f868fcc75272a6487c8c1b5b7adc6ebc2f9cf933c6b6c8ce2e27e7d8"
+    },
+    {
+      "frame_dir": "000276",
+      "frame": 276,
+      "sequence": 69,
+      "category": "dim",
+      "features": {
+        "brightness_proxy": 0.3187078100326796,
+        "min_border_px": 140.88213523817262,
+        "axis_ratio": 6.256509969868145,
+        "hull_scale_px": 167.9001433515229,
+        "distance_m": 0.5679043616377016,
+        "pitch_deg": -6.512726537659972,
+        "invalid_points": 0
+      },
+      "link_names": [
+        "kp_base",
+        "kp_shoulder_pan",
+        "kp_shoulder_lift",
+        "kp_upper_mid",
+        "kp_elbow",
+        "kp_forearm_mid",
+        "kp_wrist",
+        "kp_wrist_mid",
+        "kp_gripper_base"
+      ],
+      "meta_sha256": "911e445ec91988f54d63e482d5e01dee4b7af3984313aa1968e2a106478a8ef7",
+      "rgb_sha256": "5f40da52285045d2c863c5a9579fa3d5b94b03c2d7abb08b5679b19686c6c725"
+    },
+    {
+      "frame_dir": "000296",
+      "frame": 296,
+      "sequence": 74,
+      "category": "dim",
+      "features": {
+        "brightness_proxy": 0.33730607273770213,
+        "min_border_px": 124.87599467037751,
+        "axis_ratio": 3.9510457190891515,
+        "hull_scale_px": 225.36885152427413,
+        "distance_m": 0.4288149963722543,
+        "pitch_deg": -21.870480814101633,
+        "invalid_points": 0
+      },
+      "link_names": [
+        "kp_base",
+        "kp_shoulder_pan",
+        "kp_shoulder_lift",
+        "kp_upper_mid",
+        "kp_elbow",
+        "kp_forearm_mid",
+        "kp_wrist",
+        "kp_wrist_mid",
+        "kp_gripper_base"
+      ],
+      "meta_sha256": "9d5fde88c8270afb9c778329bbec73defc3f3ae29aa7ef5324090244f9908814",
+      "rgb_sha256": "25acaf6526079c6afcfe45637b3d0400bf82019e1147de137b494a1c85bc1ba6"
+    },
+    {
+      "frame_dir": "000308",
+      "frame": 308,
+      "sequence": 77,
+      "category": "dim",
+      "features": {
+        "brightness_proxy": 0.3400876534730449,
+        "min_border_px": 182.30331011237644,
+        "axis_ratio": 2.9179482680033266,
+        "hull_scale_px": 118.16454570614017,
+        "distance_m": 0.6900334970123763,
+        "pitch_deg": -37.427162907244316,
+        "invalid_points": 0
+      },
+      "link_names": [
+        "kp_base",
+        "kp_shoulder_pan",
+        "kp_shoulder_lift",
+        "kp_upper_mid",
+        "kp_elbow",
+        "kp_forearm_mid",
+        "kp_wrist",
+        "kp_wrist_mid",
+        "kp_gripper_base"
+      ],
+      "meta_sha256": "fb5223d0a200b37ba90d4e2075ca2ccd2f2dd664c6478260dad542b8c596de94",
+      "rgb_sha256": "1ccb650071bbcc5e87bab15f56726b8b18d47d867e05b8c86a9720d6950ed0c8"
+    },
+    {
+      "frame_dir": "000180",
+      "frame": 180,
+      "sequence": 45,
+      "category": "edge",
+      "features": {
+        "brightness_proxy": 0.4180546271103573,
+        "min_border_px": 52.742348584587376,
+        "axis_ratio": 6.469573510777144,
+        "hull_scale_px": 291.1666559488845,
+        "distance_m": 0.36551606926462726,
+        "pitch_deg": -30.86157962836832,
+        "invalid_points": 0
+      },
+      "link_names": [
+        "kp_base",
+        "kp_shoulder_pan",
+        "kp_shoulder_lift",
+        "kp_upper_mid",
+        "kp_elbow",
+        "kp_forearm_mid",
+        "kp_wrist",
+        "kp_wrist_mid",
+        "kp_gripper_base"
+      ],
+      "meta_sha256": "58b4638f7c094a384a1fae35d33b3a57abf3678975f2f68eecd1db095502c1e3",
+      "rgb_sha256": "85c197c3e625ee7f73d89cbe0d46f91d2eebce39596434ae670e9f0bec6352bf"
+    },
+    {
+      "frame_dir": "000092",
+      "frame": 92,
+      "sequence": 23,
+      "category": "edge",
+      "features": {
+        "brightness_proxy": 0.4174813236632274,
+        "min_border_px": 58.43492623475396,
+        "axis_ratio": 4.581837141576465,
+        "hull_scale_px": 226.22355275074594,
+        "distance_m": 0.36927293704450287,
+        "pitch_deg": -17.53964770804981,
+        "invalid_points": 0
+      },
+      "link_names": [
+        "kp_base",
+        "kp_shoulder_pan",
+        "kp_shoulder_lift",
+        "kp_upper_mid",
+        "kp_elbow",
+        "kp_forearm_mid",
+        "kp_wrist",
+        "kp_wrist_mid",
+        "kp_gripper_base"
+      ],
+      "meta_sha256": "e64592345913c820dcaaa3f204f3e4408d44aaec151e4440f0ccde0fe86990ec",
+      "rgb_sha256": "a60822d2a39b517345fb14081b511d5f0eb920a4c92d0e6b133709fb75715349"
+    },
+    {
+      "frame_dir": "000056",
+      "frame": 56,
+      "sequence": 14,
+      "category": "edge",
+      "features": {
+        "brightness_proxy": 0.48346571343478223,
+        "min_border_px": 78.0076169087099,
+        "axis_ratio": 3.509082357705396,
+        "hull_scale_px": 316.6096438908567,
+        "distance_m": 0.3846267053661554,
+        "pitch_deg": -11.984135125021837,
+        "invalid_points": 0
+      },
+      "link_names": [
+        "kp_base",
+        "kp_shoulder_pan",
+        "kp_shoulder_lift",
+        "kp_upper_mid",
+        "kp_elbow",
+        "kp_forearm_mid",
+        "kp_wrist",
+        "kp_wrist_mid",
+        "kp_gripper_base"
+      ],
+      "meta_sha256": "842918d5af38e5481a9d2f338dacabd036a6bf430bf5e79e979fa399143e9eaf",
+      "rgb_sha256": "f926adf831d1d35bee4d77e7f0e51779935e83ecba0c1755fcad6a510c680848"
+    },
+    {
+      "frame_dir": "000316",
+      "frame": 316,
+      "sequence": 79,
+      "category": "edge",
+      "features": {
+        "brightness_proxy": 0.5436282796398746,
+        "min_border_px": 84.12165831536464,
+        "axis_ratio": 1.5253998107342526,
+        "hull_scale_px": 200.7111880332683,
+        "distance_m": 0.41193381452296085,
+        "pitch_deg": -17.607080607249273,
+        "invalid_points": 0
+      },
+      "link_names": [
+        "kp_base",
+        "kp_shoulder_pan",
+        "kp_shoulder_lift",
+        "kp_upper_mid",
+        "kp_elbow",
+        "kp_forearm_mid",
+        "kp_wrist",
+        "kp_wrist_mid",
+        "kp_gripper_base"
+      ],
+      "meta_sha256": "3ea71dfc23914fcc2c75be135ba1dfb1647771d7929cea2feea40474f82ad6e4",
+      "rgb_sha256": "d9b08e9e4e89541f3607a8db3b4ddd7381444186789befc8a465b1c4ca20cd7d"
+    },
+    {
+      "frame_dir": "000233",
+      "frame": 233,
+      "sequence": 58,
+      "category": "collinear",
+      "features": {
+        "brightness_proxy": 0.5377539195977356,
+        "min_border_px": 123.2412724214019,
+        "axis_ratio": 1.0700957659196932,
+        "hull_scale_px": 133.80282626962958,
+        "distance_m": 0.6261635549245055,
+        "pitch_deg": -15.123632555961883,
+        "invalid_points": 0
+      },
+      "link_names": [
+        "kp_base",
+        "kp_shoulder_pan",
+        "kp_shoulder_lift",
+        "kp_upper_mid",
+        "kp_elbow",
+        "kp_forearm_mid",
+        "kp_wrist",
+        "kp_wrist_mid",
+        "kp_gripper_base"
+      ],
+      "meta_sha256": "1cd2d45b2d8e1561b4748ab8d2c6cd7c22f8ea4e141c92f831f15edc506551a8",
+      "rgb_sha256": "cd59194579468504c638333fdd4346d9a54b702dc46250613458339bec8dae62"
+    },
+    {
+      "frame_dir": "000068",
+      "frame": 68,
+      "sequence": 17,
+      "category": "collinear",
+      "features": {
+        "brightness_proxy": 0.47708970676704265,
+        "min_border_px": 131.9531766808514,
+        "axis_ratio": 1.1145661375891784,
+        "hull_scale_px": 162.26789366898052,
+        "distance_m": 0.5777859095038843,
+        "pitch_deg": -19.973987853795833,
+        "invalid_points": 0
+      },
+      "link_names": [
+        "kp_base",
+        "kp_shoulder_pan",
+        "kp_shoulder_lift",
+        "kp_upper_mid",
+        "kp_elbow",
+        "kp_forearm_mid",
+        "kp_wrist",
+        "kp_wrist_mid",
+        "kp_gripper_base"
+      ],
+      "meta_sha256": "f6a52cc6a490c2350bb14614b18c21c96f910b4a8788c59afb960583bd687117",
+      "rgb_sha256": "9d42d2eac4aa868c496b15efad1a5cb04e60aa3c6e8daa85d0a2c3fce040da5a"
+    },
+    {
+      "frame_dir": "000048",
+      "frame": 48,
+      "sequence": 12,
+      "category": "collinear",
+      "features": {
+        "brightness_proxy": 0.5849297744948566,
+        "min_border_px": 163.52594057165322,
+        "axis_ratio": 1.1795432715801382,
+        "hull_scale_px": 128.7722744307539,
+        "distance_m": 0.7557124897491148,
+        "pitch_deg": -9.352636190262928,
+        "invalid_points": 0
+      },
+      "link_names": [
+        "kp_base",
+        "kp_shoulder_pan",
+        "kp_shoulder_lift",
+        "kp_upper_mid",
+        "kp_elbow",
+        "kp_forearm_mid",
+        "kp_wrist",
+        "kp_wrist_mid",
+        "kp_gripper_base"
+      ],
+      "meta_sha256": "97a1aac3068fd52bed61299e9cc5effdd10ad865b82f43e73c3a49ee8fad25e8",
+      "rgb_sha256": "7a124777757306d16f373ce9ee2bcda66ffc4f5cf7ad8bf5e63e95e9c33df062"
+    },
+    {
+      "frame_dir": "000216",
+      "frame": 216,
+      "sequence": 54,
+      "category": "collinear",
+      "features": {
+        "brightness_proxy": 0.6150602498731526,
+        "min_border_px": 151.31610478559236,
+        "axis_ratio": 1.1818235420961805,
+        "hull_scale_px": 114.26440943871184,
+        "distance_m": 0.7393684308368864,
+        "pitch_deg": -28.15007016224329,
+        "invalid_points": 0
+      },
+      "link_names": [
+        "kp_base",
+        "kp_shoulder_pan",
+        "kp_shoulder_lift",
+        "kp_upper_mid",
+        "kp_elbow",
+        "kp_forearm_mid",
+        "kp_wrist",
+        "kp_wrist_mid",
+        "kp_gripper_base"
+      ],
+      "meta_sha256": "ef0c139fe78ac70825c0ab3b8f00b7d803be7c54372cf49c95f5ed6786ab2cc6",
+      "rgb_sha256": "dac024d3ed6377415cf4b9ce9a55cd70902242b2c5993dff491412ff96492509"
+    },
+    {
+      "frame_dir": "000128",
+      "frame": 128,
+      "sequence": 32,
+      "category": "hard",
+      "features": {
+        "brightness_proxy": 0.39559284898014796,
+        "min_border_px": 145.26297720427306,
+        "axis_ratio": 4.500614603289878,
+        "hull_scale_px": 178.99738166076102,
+        "distance_m": 0.374575953058706,
+        "pitch_deg": -39.06040517099092,
+        "invalid_points": 0
+      },
+      "link_names": [
+        "kp_base",
+        "kp_shoulder_pan",
+        "kp_shoulder_lift",
+        "kp_upper_mid",
+        "kp_elbow",
+        "kp_forearm_mid",
+        "kp_wrist",
+        "kp_wrist_mid",
+        "kp_gripper_base"
+      ],
+      "meta_sha256": "d5b042451cd4bc3ca4989f31e1f1b61b2dd83177a9fce0ed4b769c0e54f61747",
+      "rgb_sha256": "bdf5f89ff16183f3ff466372ed47a5bcf3ce90d1deb7ec1b0c00e5e138e8672f"
+    },
+    {
+      "frame_dir": "000256",
+      "frame": 256,
+      "sequence": 64,
+      "category": "hard",
+      "features": {
+        "brightness_proxy": 0.5660501658929141,
+        "min_border_px": 115.97120949706311,
+        "axis_ratio": 1.6022615553911854,
+        "hull_scale_px": 218.21480188571948,
+        "distance_m": 0.3771884541957479,
+        "pitch_deg": -43.823289609909025,
+        "invalid_points": 0
+      },
+      "link_names": [
+        "kp_base",
+        "kp_shoulder_pan",
+        "kp_shoulder_lift",
+        "kp_upper_mid",
+        "kp_elbow",
+        "kp_forearm_mid",
+        "kp_wrist",
+        "kp_wrist_mid",
+        "kp_gripper_base"
+      ],
+      "meta_sha256": "120a6f6cfa83fb657623391fa17090de1088fd773158437e343356b05ffd78dd",
+      "rgb_sha256": "ed162f6fedcdc79fd50e0e514b15a5219758f894c048155a33922832c77cb23c"
+    },
+    {
+      "frame_dir": "000112",
+      "frame": 112,
+      "sequence": 28,
+      "category": "hard",
+      "features": {
+        "brightness_proxy": 0.4325141870239091,
+        "min_border_px": 119.35568841515152,
+        "axis_ratio": 7.289645344800685,
+        "hull_scale_px": 203.14311489036592,
+        "distance_m": 0.377544752352973,
+        "pitch_deg": -39.74849399429428,
+        "invalid_points": 0
+      },
+      "link_names": [
+        "kp_base",
+        "kp_shoulder_pan",
+        "kp_shoulder_lift",
+        "kp_upper_mid",
+        "kp_elbow",
+        "kp_forearm_mid",
+        "kp_wrist",
+        "kp_wrist_mid",
+        "kp_gripper_base"
+      ],
+      "meta_sha256": "edeb9f0f4fe6910732a982aec741d387ad19aba7b63ce26c07fa93b992cb7cf5",
+      "rgb_sha256": "f28dd1ccc49ce9ebe0eec222bfbd674b5d773b48112ea8a2c7bee4547249a42e"
+    },
+    {
+      "frame_dir": "000252",
+      "frame": 252,
+      "sequence": 63,
+      "category": "hard",
+      "features": {
+        "brightness_proxy": 0.5404959627532426,
+        "min_border_px": 124.67476572550487,
+        "axis_ratio": 1.9016994050589449,
+        "hull_scale_px": 205.54819560001275,
+        "distance_m": 0.38275842453583825,
+        "pitch_deg": -41.176120020812775,
+        "invalid_points": 0
+      },
+      "link_names": [
+        "kp_base",
+        "kp_shoulder_pan",
+        "kp_shoulder_lift",
+        "kp_upper_mid",
+        "kp_elbow",
+        "kp_forearm_mid",
+        "kp_wrist",
+        "kp_wrist_mid",
+        "kp_gripper_base"
+      ],
+      "meta_sha256": "6d7c74eea6a14e55d704db8f9544a68e9082b4b6b03178eff31d764d70e041aa",
+      "rgb_sha256": "a081ded868312a73f26a46930784011b96bdcfaa937137bbda7a27e32f480fc7"
+    }
+  ],
+  "keypoint_order": {
+    "value": [
+      "kp_base",
+      "kp_shoulder_pan",
+      "kp_shoulder_lift",
+      "kp_upper_mid",
+      "kp_elbow",
+      "kp_forearm_mid",
+      "kp_wrist",
+      "kp_wrist_mid",
+      "kp_gripper_base"
+    ],
+    "source": "dataset meta.json 的 link_names",
+    "note": "权重本身不存关键点顺序；此处为数据集侧证据"
+  }
+}

@@ -110,6 +110,8 @@ def resize_batch(images: torch.Tensor, recipe: Recipe) -> torch.Tensor:
     """
     if images.ndim != 4 or images.shape[1] != 3:
         raise ValueError(f"输入必须是 (B, 3, h, w)，实际 {tuple(images.shape)}")
+    if images.shape[0] == 0 or images.shape[-2] == 0 or images.shape[-1] == 0:
+        raise ValueError(f"输入含空维度，无法推理：{tuple(images.shape)}")
     size = (recipe.input_height, recipe.input_width)
     if images.shape[-2:] != size:
         images = F.interpolate(
@@ -182,7 +184,30 @@ def decode_tensor(
             f"{recipe.name}: 热图通道 {heatmaps.shape[1]} "
             f"与配方 n_keypoints {recipe.n_keypoints} 不符"
         )
+    # NaN/inf 会被 soft-argmax 直接静默传播成 NaN 坐标，必须在入口拦住
+    if not torch.isfinite(heatmaps).all():
+        raise ValueError(f"{recipe.name}: 热图包含非有限值（NaN 或 inf）")
     return DECODERS[key](heatmaps) * stride_of(recipe)
+
+
+def check_keypoints(recipe: Recipe, names) -> None:
+    """核对配方声明的关键点顺序与数据集给出的顺序是否一致。
+
+    权重文件不含关键点名称与顺序，无法从参数反推；因此只要手里有数据集
+    真值（meta.json 的 link_names）就必须在推理前核对，否则误差可能很小
+    但每列对应错点，表现为「模型很准却不搭」。
+    """
+    names = list(names)
+    declared = list(recipe.keypoints)
+    if len(names) != len(declared):
+        raise ValueError(
+            f"{recipe.name}: 关键点数不符（配方 {len(declared)}，数据集 {len(names)}）"
+        )
+    if names != declared:
+        raise ValueError(
+            f"{recipe.name}: 关键点顺序不一致\n"
+            f"  配方：{declared}\n  数据集：{names}"
+        )
 
 
 def decode(
