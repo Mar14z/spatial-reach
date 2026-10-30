@@ -1,0 +1,66 @@
+# A01 基线配方：只登记有证据的条目；未知项显式标注，不写“看起来合理”的默认值。
+# legacy_replay  历史回放，允许 A/B 解码不同，不与新结果混比
+# matched_recipe 要求 A/B 使用完全相同的推理配方
+schema_version: 1
+created: "2026-10-31"
+conventions:
+  input_size: "网络输入 (width, height)；来自训练记录，不从权重文件名推断"
+  out_size: "热图输出 (width, height)，对应 640x480 规范坐标 / stride"
+  keypoints: "顺序即网络通道顺序；名称取自样本 meta.json 的 kp_*"
+profiles:
+  legacy_replay:
+    m0_ft320_archive:
+      mode: legacy_replay
+      checkpoint: outputs/checkpoints/m0_ft320.pth
+      sha256: 357293bce970c327832079a778ea4692923ef6e3ffe8006d68c754c6b3c3a0f3
+      model: resnet18
+      n_keypoints: 9
+      input_size: {width: 320, height: 240}
+      out_size: {width: 160, height: 120}
+      preprocess: gamma
+      normalize: true
+      decode: soft
+      keypoints:
+        - kp_base
+        - kp_shoulder_pan
+        - kp_shoulder_lift
+        - kp_upper_mid
+        - kp_elbow
+        - kp_forearm_mid
+        - kp_wrist
+        - kp_wrist_mid
+        - kp_gripper_base
+      evidence:
+        training_log: outputs/tb_zh/m0_ft320/events.out.tfevents.1792952325.Mar14z.101292.0
+        training_log_sha256: ad64fdaa57a8e1e4112e943001ed110892123d1b4cbff7eafde049d19b35995f
+        input_size_source: "TensorBoard 配置/text_summary，非文件名"
+        checkpoint_origin: unproven
+        keypoint_label_mismatch: "训练日志末两点写作 底座左点/底座右点；样本 meta 为 kp_wrist_mid/kp_gripper_base"
+  matched_recipe:
+    m0_ft320_matched:
+      mode: matched_recipe
+      checkpoint: outputs/checkpoints/m0_ft320.pth
+      sha256: 357293bce970c327832079a778ea4692923ef6e3ffe8006d68c754c6b3c3a0f3
+      model: resnet18
+      n_keypoints: 9
+      input_size: {width: 320, height: 240}
+      out_size: {width: 160, height: 120}
+      preprocess: gamma
+      normalize: true
+      decode: soft
+      keypoints:
+        - kp_base
+        - kp_shoulder_pan
+        - kp_shoulder_lift
+        - kp_upper_mid
+        - kp_elbow
+        - kp_forearm_mid
+        - kp_wrist
+        - kp_wrist_mid
+        - kp_gripper_base
+      evidence:
+        training_log: outputs/tb_zh/m0_ft320/events.out.tfevents.1792952325.Mar14z.101292.0
+        training_log_sha256: ad64fdaa57a8e1e4112e943001ed110892123d1b4cbff7eafde049d19b35995f
+        input_size_source: "TensorBoard 配置/text_summary，非文件名"
+        checkpoint_origin: unproven
+        keypoint_label_mismatch: "训练日志末两点写作 底座左点/底座右点；样本 meta 为 kp_wrist_mid/kp_gripper_base"
