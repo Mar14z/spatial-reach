@@ -73,6 +73,23 @@ def _pose_gap(a, b) -> float:
     return max(float(ang), float(gap_cm))
 
 
+def degeneracy_gap(sols, min_gap: float = 1.0) -> float:
+    """退化解边距：与最优解位姿差超过 min_gap 的解里，rms 次优者的 rms 差（px）。
+
+    多个 seed 落进不同谷且 rms 相近（gap→0）= 双峰歧义，解不可信；
+    没有找到独立次优解时返回 inf，表示未测得竞争解，不代表已证明单峰或可靠。
+    这个特征只度量已发现候选的竞争程度，不能代替留出观测和物理合法性检验。
+    """
+    if len(sols) < 2:
+        return float("inf")
+    a = min(sols, key=lambda s: s[2])
+    others = [s for s in sols if _pose_gap(a, (s[0], s[1])) > min_gap]
+    if not others:
+        return float("inf")
+    b = min(others, key=lambda s: s[2])
+    return float(b[2] - a[2])
+
+
 def solve_pnp_candidates(
     K: np.ndarray,
     points3d: np.ndarray,
@@ -191,7 +208,8 @@ def _reproj_rms(obj, img, K, rvec, tvec) -> float:
     return float(np.sqrt(np.mean(np.sum(d ** 2, axis=1))))
 
 
-def solve_pnp_sequence(K, observations, seeds, reject_k: float = 3.0):
+def solve_pnp_sequence(K, observations, seeds, reject_k: float = 3.0,
+                       return_solutions: bool = False):
     """序列联合解：相机不动、各帧臂姿态不同，联合求同一个 (R_cb, t_cb)。
 
     臂一转 pan 各帧点集就不再共面，镜像解失去立足点；同时多帧 2D 噪声被
@@ -202,11 +220,23 @@ def solve_pnp_sequence(K, observations, seeds, reject_k: float = 3.0):
     observations: [(points3d_i, points2d_i), ...]，同一序列的每帧。
     seeds: [(R, t), ...]，候选初值。
     返回 (R_cb, t_cb, joint_rms_px, per_frame_rms)。
+
+    return_solutions=True 时额外返回第 5 项 sols=[(R, t, rms), ...]：
+    只保留有限的成功解；等残差时保留先出现的候选，全部失败则抛 ValueError。
+    不同位姿却有相近 rms 的候选提示歧义；没有发现竞争解不代表不存在歧义。
+    候选残差只用于数值选优，不能证明外参真值误差较小。
     """
     obs = [
         (np.asarray(p3, np.float64).reshape(-1, 3), np.asarray(p2, np.float64).reshape(-1, 2))
         for p3, p2 in observations
     ]
+    K = np.asarray(K, np.float64).reshape(3, 3)
+    if not obs or not np.isfinite(K).all() or not np.isfinite(reject_k) or reject_k <= 0:
+        raise ValueError("solve_pnp_sequence: invalid observations or camera")
+    if any(len(p3) < 4 or len(p3) != len(p2) or not np.isfinite(p3).all()
+           or not np.isfinite(p2).all() for p3, p2 in obs):
+        raise ValueError("solve_pnp_sequence: invalid correspondences")
+    seeds = list(seeds)
     keep = list(range(len(obs)))
     best = None
     per = np.full(len(obs), np.inf)
@@ -215,16 +245,31 @@ def solve_pnp_sequence(K, observations, seeds, reject_k: float = 3.0):
         obj = np.vstack([o[0] for o in sub])
         img = np.vstack([o[1] for o in sub])
         best = None
+        sols = []
         for R0, t0 in seeds:
-            ok, rvec, tvec = cv2.solvePnP(
-                obj, img, K, None, cv2.Rodrigues(np.asarray(R0, np.float64))[0],
-                np.asarray(t0, np.float64).reshape(3), True, flags=cv2.SOLVEPNP_ITERATIVE,
-            )
-            if not ok:
+            try:
+                R0 = np.asarray(R0, np.float64).reshape(3, 3)
+                t0 = np.asarray(t0, np.float64).reshape(3).copy()
+                if not (np.isfinite(R0).all() and np.isfinite(t0).all()):
+                    continue
+                ok, rvec, tvec = cv2.solvePnP(
+                    obj, img, K, None, cv2.Rodrigues(R0)[0], t0,
+                    True, flags=cv2.SOLVEPNP_ITERATIVE,
+                )
+                if not ok or rvec is None or tvec is None:
+                    continue
+                if not (np.isfinite(rvec).all() and np.isfinite(tvec).all()):
+                    continue
+                rms = _reproj_rms(obj, img, K, rvec, tvec)
+                R = cv2.Rodrigues(rvec)[0]
+                if not np.isfinite(rms) or not np.isfinite(R).all():
+                    continue
+            except (cv2.error, ValueError):
                 continue
-            rms = _reproj_rms(obj, img, K, rvec, tvec)
+            sol = (R, tvec.reshape(3).copy(), rms)
+            sols.append(sol)
             if best is None or rms < best[2]:
-                best = (cv2.Rodrigues(rvec)[0], tvec.reshape(3), rms)
+                best = sol
         if best is None:
             raise ValueError("solve_pnp_sequence failed")
         rr = cv2.Rodrigues(best[0])[0]
@@ -235,4 +280,6 @@ def solve_pnp_sequence(K, observations, seeds, reject_k: float = 3.0):
         if per[worst] <= reject_k * float(np.median(per[keep])):
             break
         keep.remove(worst)
+    if return_solutions:
+        return best[0], best[1], best[2], per, sols
     return best[0], best[1], best[2], per

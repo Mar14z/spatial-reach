@@ -26,6 +26,8 @@ from touch.learning.keypoint_model import (
     MobileNetHeatmapNet,
     ResNetHeatmapNet,
     TinyHeatmapNet,
+    argmax_subpixel,
+    heatmap_argmax,
     normalize,
     soft_argmax,
 )
@@ -50,6 +52,12 @@ def main():
         default="none",
     )
     parser.add_argument("--extra-labels", type=Path, default=None)
+    parser.add_argument(
+        "--decode",
+        choices=["soft", "argmax", "subpixel"],
+        default="soft",
+        help="热图解码：soft=全局期望（历史口径）; argmax=峰值; subpixel=峰值+抛物线",
+    )
     parser.add_argument(
         "--input-size",
         type=str,
@@ -96,7 +104,12 @@ def main():
         image = normalize(image).to(device)
         with torch.no_grad():
             heatmaps = model(image)[0].cpu()
-        pred_2d = soft_argmax(heatmaps[None])[0].numpy() * 4.0
+        if args.decode == "soft":
+            pred_2d = soft_argmax(heatmaps[None])[0].numpy() * 4.0
+        elif args.decode == "argmax":
+            pred_2d = heatmap_argmax(heatmaps[None])[0].numpy() * 4.0
+        else:
+            pred_2d = argmax_subpixel(heatmaps[None])[0].numpy() * 4.0
         gt = sample["keypoints"][:n_keypoints]
         errors = np.linalg.norm(pred_2d - gt, axis=1)
         all_errors.append(errors)

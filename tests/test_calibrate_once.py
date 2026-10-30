@@ -74,3 +74,40 @@ def test_missing_calib_frame_is_skipped_not_shifted(tmp_path):
     st = apply_calibrate_once(records, tmp_path, CFG, (0, 3))
     assert st["n_skipped"] == 1 and st["n_seq"] == 1
     assert sum(1 for r in records if "_calib" in r) == 4  # 只处理了完整的那个序列
+
+
+def test_joint_failure_is_counted_and_old_pose_cleared(tmp_path, monkeypatch):
+    from touch.learning import evaluate
+    records = _make(tmp_path)
+    evaluate.apply_calibrate_once(records, tmp_path, CFG)
+
+    def fail(*a, **kw):
+        raise ValueError("没有有效候选")
+
+    monkeypatch.setattr(evaluate, "solve_pnp_sequence", fail)
+    st = evaluate.apply_calibrate_once(records, tmp_path, CFG)
+    assert st["n_planned"] == st["n_failed"] == 2
+    assert st["n_seq"] == 0
+    assert all("_Rc" not in r and r["_calib_status"] == "failed" for r in records)
+
+
+def test_calibrated_online_pose_does_not_require_single_frame_success(tmp_path):
+    records = _make(tmp_path)
+    for r in records:
+        if r["_k"] == 1:
+            r["pnp_ok"] = False
+    apply_calibrate_once(records, tmp_path, CFG)
+    from touch.learning.evaluate import summarize
+    online = [r for r in records if r["_calib"] == "online"]
+    assert summarize(online, CFG)["n_pnp_ok"] == 4
+
+
+def test_physical_rejection_is_counted(tmp_path, monkeypatch):
+    from touch.learning import evaluate
+    records = _make(tmp_path)
+    monkeypatch.setattr(evaluate, "solve_pnp_sequence", lambda *a, **kw:
+                        (np.eye(3), np.array([0., 0., 0.8]), 0., [], []))
+    st = evaluate.apply_calibrate_once(records, tmp_path, CFG)
+    assert st["n_planned"] == st["n_rejected"] == 2
+    assert st["n_seq"] == st["n_failed"] == st["n_skipped"] == 0
+    assert all(r["_calib_status"] == "rejected" and "_Rc" not in r for r in records)

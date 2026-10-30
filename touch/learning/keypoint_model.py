@@ -176,6 +176,42 @@ def heatmap_argmax(heatmaps):
     return torch.stack([x, y], dim=-1)
 
 
+def argmax_subpixel(heatmaps):
+    """峰值附近三点抛物线拟合，返回热图坐标；原图缩放由调用端负责。
+
+    仅对有双侧邻点且曲率为负的轴作修正，边界或平坦轴保留整格峰值。
+    拟合用 float32；它不保证修复多峰歧义，真实数据收益需要单独评测。
+    """
+    if heatmaps.ndim != 4 or min(heatmaps.shape) < 1:
+        raise ValueError("热图必须是非空的 B×K×H×W 张量")
+    if not torch.isfinite(heatmaps).all():
+        raise ValueError("热图包含非有限值")
+    heatmaps = heatmaps.float()
+    b, k, h, w = heatmaps.shape
+    idx = heatmap_argmax(heatmaps)
+    x = idx[..., 0].long()
+    y = idx[..., 1].long()
+    bi = torch.arange(b, device=heatmaps.device)[:, None]
+    ki = torch.arange(k, device=heatmaps.device)[None, :]
+    c = heatmaps[bi, ki, y, x]
+    lx = heatmaps[bi, ki, y, (x - 1).clamp(min=0)]
+    rx = heatmaps[bi, ki, y, (x + 1).clamp(max=w - 1)]
+    ty = heatmaps[bi, ki, (y - 1).clamp(min=0), x]
+    by = heatmaps[bi, ki, (y + 1).clamp(max=h - 1), x]
+
+    def off(a, c0, d, interior):
+        den = a - 2.0 * c0 + d
+        valid = interior & (den < -1e-6)
+        safe_den = torch.where(valid, den, torch.ones_like(den))
+        delta = (0.5 * (a - d) / safe_den).clamp(-0.5, 0.5)
+        return torch.where(valid, delta, torch.zeros_like(delta))
+
+    return torch.stack(
+        [x.float() + off(lx, c, rx, (x > 0) & (x < w - 1)),
+         y.float() + off(ty, c, by, (y > 0) & (y < h - 1))], dim=-1
+    )
+
+
 def soft_argmax(heatmaps):
     b, k, h, w = heatmaps.shape
     xs = torch.arange(w, device=heatmaps.device, dtype=heatmaps.dtype)

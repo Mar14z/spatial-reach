@@ -1,4 +1,4 @@
-"""统一评测 CLI：吃预测 JSON，输出 markdown + JSON（含按帧 bootstrap CI）。
+"""统一评测 CLI：预测 JSON → 报告（有序列按序列重采样，无序列按帧）。
 
 用法：
     python scripts/eval_report.py --data data/synthetic/m0_kp9b_test/test \
@@ -24,6 +24,7 @@ from touch.learning.evaluate import (
     evaluate_frames,
     load_predictions,
     summarize,
+    write_result,
 )
 
 
@@ -44,7 +45,7 @@ def strata(records, cfg):
     out = {}
     for lo, hi, name in STRATA:
         sub = [r for r in records if lo <= r.get("spread2d", np.nan) < hi]
-        if not sub or not any(r["pnp_ok"] for r in sub):
+        if not sub:
             continue
         out[f"{lo:g}-{hi:g}"] = {"name": name, "n": len(sub), **summarize(sub, cfg)}
     return out
@@ -63,7 +64,9 @@ def strata_md(st, n_total):
 
 def clean(records):
     """丢掉 `_` 开头的中间量（PnP 原始解、点集），它们只给序列联解用。"""
-    return [{k: v for k, v in r.items() if not k.startswith("_")} for r in records]
+    return [{**{k: v for k, v in r.items() if not k.startswith("_")},
+             "sequence": r.get("_seq"), "frame_in_seq": r.get("_k"),
+             "calibration_status": r.get("_calib_status")} for r in records]
 
 
 def main():
@@ -98,21 +101,27 @@ def main():
         z = np.load(args.extra)
         extra = {str(n): (u, x) for n, u, x in zip(z["frames"], z["uv"], z["xyz"])}
     records, cfg = evaluate_frames(args.data, frames, extra)
+    calibration = None
+    if args.sequence_solve and args.calibrate_once:
+        ap.error("sequence-solve 和 calibrate-once 不能同时使用")
     if args.sequence_solve:
         n_changed = apply_sequence_solve(records, args.data, cfg)
         print(f"序列联解：改写 {n_changed} 帧的翻转判定")
     if args.calibrate_once:
         idx = tuple(int(v) for v in args.calib_idx.split(","))
         st = apply_calibrate_once(records, args.data, cfg, idx)
-        records = [r for r in records if r.get("_calib") == "online"]
+        calibration = st
+        records = [r for r in records if r.get("_seq") is not None
+                   and r.get("_k") is not None and r["_k"] not in idx]
         print(f"标一次：{st['n_seq']} 个序列 × 两帧 {idx} 联合解 T，"
               f"在线帧 {st['n_online']}（这些帧没解 PnP）")
         print(f"  标定帧重投影 RMS {np.mean(st['calib_rms']):.2f}px   "
               f"在线帧 RMS {np.mean(st['online_rms']):.2f}px")
         print(f"  按序列达标@{cfg['tolerance'][0][0]:g}cm/{cfg['tolerance'][0][1]:g}°："
               f"{st['n_within']}/{st['n_seq']} = {st['n_within']/max(st['n_seq'], 1)*100:.1f}%")
-        if st["n_skipped"]:
-            print(f"  跳过 {st['n_skipped']} 个序列：标定帧缺失或单帧解失败（不计入分母）")
+        print(f"  全部序列 {st['n_planned']}：接受 {st['n_seq']}，缺帧/单帧失败 {st['n_skipped']}，"
+              f"联合失败 {st['n_failed']}，物理拒识 {st['n_rejected']}")
+        print(f"  全部序列达标率 {st['n_within']}/{st['n_planned']}；拒识与失败保留在分母")
     s = summarize(records, cfg)
     ci = bootstrap_ci(records, n=args.bootstrap) if args.bootstrap else {}
 
@@ -134,7 +143,8 @@ def main():
     print(f"tbl  median {s['table_median']:.2f}  p95 {fmt(s['table_p95'], ci.get('table_p95'), 'cm')}")
     # 夹爪容差是悬崖：超过就抓不到，中位数、p95 都看不出「多少比例会失败」。
     tol_mm = cfg["grasp_tol_cm"] * 10
-    print(f"抓取 P(桌面误差≤{tol_mm:g}mm) {s['p_within_grip']*100:.1f}%  ← 抓取成功率的预测值")
+    print(f"几何容差达标率 P(桌面误差≤{tol_mm:g}mm) {s['p_within_grip']*100:.1f}%"
+          "  ← 不等同于实际抓取成功率")
 
     st = strata(records, cfg)
     if st:
@@ -148,13 +158,19 @@ def main():
 
     if args.out:
         args.out.mkdir(parents=True, exist_ok=True)
-        (args.out / "result.json").write_text(
-            json.dumps({"label": args.label, "summary": s, "ci95": ci,
-                        "strata": st, "per_frame": clean(records)}, ensure_ascii=False, indent=2),
-            encoding="utf-8",
-        )
+        write_result(args.out / "result.json",
+                     {"label": args.label, "summary": s, "ci95": ci,
+                      "calibration": calibration, "protocol_version": 3,
+                      "bootstrap_unit": "sequence_or_standalone_frame",
+                      "strata": st, "per_frame": clean(records)})
         (args.out / "report.md").write_text(
             f"# {args.label}\n\n帧数 {len(records)}\n\n"
+            + (f"标定序列：计划 {calibration['n_planned']}，接受 {calibration['n_seq']}，"
+               f"跳过 {calibration['n_skipped']}，失败 {calibration['n_failed']}，"
+               f"拒识 {calibration['n_rejected']}，达标 {calibration['n_within']}。\n\n"
+               if calibration else "")
+            + "误差仅统计有限观测；可用率含失败帧；置信区间按序列（无序列时按帧）重采样。\n\n"
+            + "桌面误差的容差达标率是几何指标，不等同于实际抓取成功率。\n\n"
             f"| 指标 | 值 | 95% CI |\n|---|---|---|\n"
             f"| 2D median 关键点级 (px) | {s['kp_px_median']:.2f} | — |\n"
             f"| 2D p95 关键点级 (px) | {s['kp_px_p95']:.2f} | — |\n"
