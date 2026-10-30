@@ -14,27 +14,21 @@ from pathlib import Path
 
 import numpy as np
 import torch
-import torch.nn.functional as F
 
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
 
 from touch.data.dataset import M0Dataset
-from touch.learning.keypoint_model import (
-    INPUT_H,
-    INPUT_W,
-    MobileNetHeatmapNet,
-    ResNetHeatmapNet,
-    TinyHeatmapNet,
-    argmax_subpixel,
-    heatmap_argmax,
-    normalize,
-    soft_argmax,
-)
+from touch.data.recipe import Recipe, sha256_of
+from touch.learning import inference
+from touch.learning.keypoint_model import INPUT_H, INPUT_W
 
 VAL = ROOT / "data/synthetic/m0_cad/val"
 CKPT = ROOT / "outputs/checkpoints/m0_cad_keypoints.pth"
 OUT = ROOT / "outputs/eval/pred_keypoints.json"
+
+# 热图 = 640x480 / STRIDE，必须与 M0Dataset 的 stride 一致
+STRIDE = 4
 
 
 def main():
@@ -70,46 +64,40 @@ def main():
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     dataset = M0Dataset(
         args.val,
-        stride=4,
+        stride=STRIDE,
         sigma=3.0,
         image_size=(in_h, in_w),
         preprocess=args.preprocess,
         extra_labels=args.extra_labels,
     )
     n_keypoints = dataset.n_keypoints - (1 if args.drop_gripper else 0)
-    if args.model == "resnet18":
-        model = ResNetHeatmapNet(
-            n_keypoints=n_keypoints, out_size=(120, 160)
-        )
-    elif args.model == "mobilenet_v3":
-        model = MobileNetHeatmapNet(
-            n_keypoints=n_keypoints, out_size=(120, 160)
-        )
-    else:
-        model = TinyHeatmapNet(n_keypoints=n_keypoints, out_size=(120, 160))
-    model.load_state_dict(torch.load(args.ckpt, map_location=device))
-    model.eval().to(device)
+    # 用命令行参数现场组一份配方，推理走与训练验证相同的契约；
+    # 想用登记过的配方时，改从 configs/baseline.yaml 读，不要在这里另写一套。
+    recipe = Recipe(
+        name=args.ckpt.stem,
+        mode="legacy_replay",
+        checkpoint=args.ckpt,
+        sha256=sha256_of(args.ckpt),
+        model=args.model,
+        n_keypoints=n_keypoints,
+        input_width=in_w,
+        input_height=in_h,
+        out_width=inference.CANONICAL_W // STRIDE,
+        out_height=inference.CANONICAL_H // STRIDE,
+        preprocess=args.preprocess,
+        normalize=True,
+        decode=args.decode,
+        keypoints=tuple(f"kp{i}" for i in range(n_keypoints)),
+    )
+    model = inference.load_model(recipe, device)
 
     results = {}
     all_errors = []
     for index in range(len(dataset)):
         sample = dataset[index]
-        # 与 collate 同理：permute 只改 strides，不补齐连续内存 cuDNN 会走慢路径
-        image = torch.from_numpy(
-            np.ascontiguousarray(sample["image"].transpose(2, 0, 1))
-        )[None]
-        image = F.interpolate(
-            image, size=(in_h, in_w), mode="bilinear", align_corners=False
+        pred_2d = inference.predict(
+            sample["image"], recipe, model=model, device=device
         )
-        image = normalize(image).to(device)
-        with torch.no_grad():
-            heatmaps = model(image)[0].cpu()
-        if args.decode == "soft":
-            pred_2d = soft_argmax(heatmaps[None])[0].numpy() * 4.0
-        elif args.decode == "argmax":
-            pred_2d = heatmap_argmax(heatmaps[None])[0].numpy() * 4.0
-        else:
-            pred_2d = argmax_subpixel(heatmaps[None])[0].numpy() * 4.0
         gt = sample["keypoints"][:n_keypoints]
         errors = np.linalg.norm(pred_2d - gt, axis=1)
         all_errors.append(errors)

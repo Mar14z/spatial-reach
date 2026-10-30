@@ -11,7 +11,6 @@ import time
 from pathlib import Path
 
 import torch
-import torch.nn.functional as F
 from torch.utils.data import DataLoader
 from torch.utils.tensorboard import SummaryWriter
 
@@ -19,18 +18,15 @@ ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
 
 from touch.data.dataset import M0Dataset
+from touch.data.recipe import Recipe
+from touch.learning import inference
 from touch.learning.keypoint_model import (
     INPUT_H,
     INPUT_W,
     KEYPOINT_NAMES,
-    MobileNetHeatmapNet,
-    ResNetHeatmapNet,
-    TinyHeatmapNet,
     collate,
-    heatmap_argmax,
     keypoint_loss,
     normalize,
-    soft_argmax,
 )
 
 # 默认数据集是 m0_seq（唯一登记在 manifest 的序列主集），权重名随之带 seq，
@@ -62,28 +58,26 @@ def parse_size(text: str) -> tuple[int, int]:
     return h, w
 
 
-def evaluate(model, loader, device, stride, drop_gripper, use_amp, input_hw=(INPUT_H, INPUT_W)):
-    """返回一套指标：argmax/soft-argmax 双解码 + 逐点误差 + 带符号偏差 + NME。"""
+def evaluate(model, loader, device, recipe, drop_gripper, use_amp):
+    """返回一套指标：argmax/soft-argmax 双解码 + 逐点误差 + 带符号偏差 + NME。
+
+    预处理与解码都走 touch.learning.inference，与独立预测同一条路径；
+    这里只负责统计口径。
+    """
     model.eval()
     e_argmax, e_soft, bias, nme = [], [], [], []
     with torch.no_grad():
         for images, _, keypoints in loader:
-            images = images.to(device, non_blocking=True)
-            if images.shape[-2:] != input_hw:
-                images = F.interpolate(
-                    images,
-                    size=input_hw,
-                    mode="bilinear",
-                    align_corners=False,
-                )
-            images = normalize(images)
+            images = inference.prepare_batch(
+                images.to(device, non_blocking=True), recipe
+            )
             with torch.autocast(
                 device_type="cuda", dtype=torch.float16, enabled=use_amp
             ):
                 pred = model(images).float().cpu()
             gt = keypoints[:, :-1] if drop_gripper else keypoints
-            soft = soft_argmax(pred) * stride
-            amax = heatmap_argmax(pred) * stride
+            soft = inference.decode_tensor(pred, recipe, "soft")
+            amax = inference.decode_tensor(pred, recipe, "argmax")
             e_argmax.append(torch.linalg.norm(amax - gt, dim=-1))
             e_soft.append(torch.linalg.norm(soft - gt, dim=-1))
             bias.append(soft - gt)
@@ -258,19 +252,30 @@ def main():
         val_ds, shuffle=False, drop_last=False, collate_fn=collate, **loader_kwargs
     )
 
-    out_size = (480 // args.stride, 640 // args.stride)
+    out_h = inference.CANONICAL_H // args.stride
+    out_w = inference.CANONICAL_W // args.stride
     n_keypoints = train_ds.n_keypoints - (1 if args.drop_gripper else 0)
-    if args.model == "resnet18":
-        model = ResNetHeatmapNet(
-            n_keypoints=n_keypoints, out_size=out_size
-        )
-    elif args.model == "mobilenet_v3":
-        model = MobileNetHeatmapNet(
-            n_keypoints=n_keypoints, out_size=out_size
-        )
-    else:
-        model = TinyHeatmapNet(n_keypoints=n_keypoints, out_size=out_size)
-    model = model.to(device)
+    # 训练期配方只描述结构与尺寸，不指向已冻结权重：checkpoint 是占位，
+    # 拿去 load_model 会因文件不存在而失败，不会静默加载错误权重。
+    recipe = Recipe(
+        name=args.ckpt.stem,
+        mode="legacy_replay",
+        checkpoint=Path("unused.pth"),
+        sha256="0" * 64,
+        model=args.model,
+        n_keypoints=n_keypoints,
+        input_width=in_w,
+        input_height=in_h,
+        out_width=out_w,
+        out_height=out_h,
+        preprocess=args.preprocess,
+        normalize=True,
+        decode="soft",
+        keypoints=tuple(f"kp{i}" for i in range(n_keypoints)),
+    )
+    model = inference.build_network(
+        args.model, n_keypoints, out_w, out_h
+    ).to(device)
     if args.init is not None:
         model.load_state_dict(torch.load(args.init, map_location=device))
         print(f"warm-start from {args.init}")
@@ -306,13 +311,9 @@ def main():
             targets = targets.to(device, non_blocking=True).float()
             if args.drop_gripper:
                 targets = targets[:, :-1]
-            if images.shape[-2:] != (in_h, in_w):
-                images = F.interpolate(
-                    images,
-                    size=(in_h, in_w),
-                    mode="bilinear",
-                    align_corners=False,
-                )
+            # 训练侧只 resize，随机光增强仍作用在 0~1 像素上；
+            # 验证侧直接 prepare_batch = resize + normalize。
+            images = inference.resize_batch(images, recipe)
             if args.consistency > 0:
                 # 同一批图两个视图：各自不同的 gamma 与光照梯度
                 xa = augment_view(images, args.rand_gamma, args.cons_ramp)
@@ -327,7 +328,9 @@ def main():
                 loss = 0.5 * (keypoint_loss(pa, targets) + keypoint_loss(pb, targets))
                 # 一致性用 px 计的均值 L2：直接压住「换个光照就整体平移」
                 cons = torch.linalg.norm(
-                    (soft_argmax(pa) - soft_argmax(pb)) * args.stride, dim=-1
+                    inference.decode_tensor(pa, recipe, "soft")
+                    - inference.decode_tensor(pb, recipe, "soft"),
+                    dim=-1,
                 ).mean()
                 loss = loss + args.consistency * cons
                 scaler.scale(loss).backward()
@@ -378,12 +381,12 @@ def main():
                     )
             if step % args.eval_every == 0:
                 tr = evaluate(
-                    model, train_loader, device, args.stride,
-                    args.drop_gripper, use_amp, (in_h, in_w),
+                    model, train_loader, device, recipe,
+                    args.drop_gripper, use_amp,
                 )
                 va = evaluate(
-                    model, val_loader, device, args.stride,
-                    args.drop_gripper, use_amp, (in_h, in_w),
+                    model, val_loader, device, recipe,
+                    args.drop_gripper, use_amp,
                 )
                 print(
                     f"  train mean {tr['mean_px']:.2f}px pck@3 {tr['pck@3']:.3f}\n"
@@ -408,12 +411,10 @@ def main():
                 break
 
     tr = evaluate(
-        model, train_loader, device, args.stride, args.drop_gripper, use_amp,
-        (in_h, in_w),
+        model, train_loader, device, recipe, args.drop_gripper, use_amp
     )
     va = evaluate(
-        model, val_loader, device, args.stride, args.drop_gripper, use_amp,
-        (in_h, in_w),
+        model, val_loader, device, recipe, args.drop_gripper, use_amp
     )
     print(
         f"final train mean {tr['mean_px']:.2f}px pck@3 {tr['pck@3']:.3f}\n"
