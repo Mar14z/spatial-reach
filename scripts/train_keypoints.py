@@ -33,7 +33,9 @@ from touch.learning.keypoint_model import (
     soft_argmax,
 )
 
-CKPT = ROOT / "outputs/checkpoints/m0_keypoints.pth"
+# 默认数据集是 m0_seq（唯一登记在 manifest 的序列主集），权重名随之带 seq，
+# 避免和旧的 m0_keypoints.pth 混淆。
+CKPT = ROOT / "outputs/checkpoints/m0_seq_keypoints.pth"
 
 
 def augment_view(images, gamma_jitter: float, light_jitter: float) -> torch.Tensor:
@@ -144,10 +146,10 @@ def log_metrics(writer, split, m, step, per_keypoint=False):
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument(
-        "--train-root", type=Path, default=ROOT / "data/synthetic/m0/train"
+        "--train-root", type=Path, default=ROOT / "data/synthetic/m0_seq/train"
     )
     parser.add_argument(
-        "--val-root", type=Path, default=ROOT / "data/synthetic/m0/val"
+        "--val-root", type=Path, default=ROOT / "data/synthetic/m0_seq/val"
     )
     parser.add_argument(
         "--model", choices=["tiny", "resnet18", "mobilenet_v3"], default="resnet18"

@@ -1,7 +1,10 @@
 """合并并行生成的 part 目录为 train/val。
 
 用法：
-    python scripts/merge_parts.py --base data/synthetic/m0_kp9
+    python scripts/merge_parts.py --base data/synthetic/m0_scratch
+
+与 generate_frames.py 的默认 --out 保持一致：两边都指向草稿目录，
+正式数据集必须显式 --base。
 """
 
 import argparse
@@ -34,7 +37,7 @@ def merge(parts: Path, prefix: str, base: Path, out_name: str) -> int:
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument(
-        "--base", type=Path, default=ROOT / "data/synthetic/m0_kp9"
+        "--base", type=Path, default=ROOT / "data/synthetic/m0_scratch"
     )
     args = parser.parse_args()
     parts = args.base / "parts"

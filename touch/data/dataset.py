@@ -77,7 +77,7 @@ PREPROCESS = {
 
 
 class M0Dataset:
-    """读取 data/synthetic/m0/<frame_id>/ 下的一个样本。
+    """读取 data/synthetic/<dataset>/<frame_id>/ 下的一个样本。
 
     cache=True 时在初始化阶段把图像/热图读进内存，适合小数据集上喂满 GPU；
     此时建议 DataLoader 使用 num_workers=0，避免每个 worker 复制缓存。

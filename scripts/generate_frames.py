@@ -12,8 +12,11 @@
     conda activate arm_sim
     python scripts/generate_frames.py --urdf assets/robots/phantomx_pincher_cad/phantomx_pincher_cad_keypoints_v1.urdf --frames 10 --seed 0
     python scripts/generate_frames.py --urdf assets/robots/phantomx_pincher_cad/phantomx_pincher_cad_keypoints_v1.urdf --frames 2000 --seed 500 \
-        --out data/synthetic/m0_kp9/train --yaw-min 0 --yaw-max 360 \
+        --out data/synthetic/m0_scratch/train --yaw-min 0 --yaw-max 360 \
         --dist-min 0.35 --dist-max 0.60 --pitch-min -25 --pitch-max -5 --no-depth
+
+--out 默认是 m0_scratch，不会落在任何已登记数据集上。正式数据集必须显式 --out，
+并在 data/manifest.json 登记配方，否则没有复现依据。
 """
 
 import argparse
@@ -36,7 +39,8 @@ from touch.sim.renderer import (
     render_frame,
 )
 
-OUT = ROOT / "data/synthetic/m0"
+# 默认输出到草稿目录：任何已登记数据集都必须显式 --out，避免静默覆盖旧数据。
+OUT = ROOT / "data/synthetic/m0_scratch"
 
 INTR_FULL = load_intrinsics(ROOT / "configs/camera_intrinsics.yaml")
 INTR = model_intrinsics(INTR_FULL, 640, 480)
