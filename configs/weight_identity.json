@@ -1,0 +1,1714 @@
+{
+  "schema_version": 1,
+  "kind": "weight_identity",
+  "conventions": {
+    "structure": "三种结构逐一 strict 加载，唯一通过者为真结构",
+    "input_size": "仅取训练时写入 TensorBoard 的 args，不从文件名推断",
+    "out_size": "权重不存输出尺寸，只能由训练记录里的 stride 推导",
+    "keypoints": "权重不存关键点名称与顺序，一律 unknown 或引用登记配方",
+    "origin": "训练记录未保存产物哈希，一律 unproven"
+  },
+  "environment": {
+    "python": "3.11.17",
+    "torch": "2.11.0+cu128",
+    "conda": "arm_sim"
+  },
+  "count": 28,
+  "weights": {
+    "outputs/checkpoints/m0_cad_keypoints.pth": {
+      "bytes": 54081653,
+      "sha256": "b16db373db8be443106f3c2d5fa2e6130ca74ab04390bb31205bd6eff3d7ffd3",
+      "structure": {
+        "family": "resnet18",
+        "n_keypoints": 6,
+        "params": 13499782,
+        "verified_by": "strict_load_state_dict"
+      },
+      "training_record": {
+        "source": "missing"
+      },
+      "input_size": {
+        "value": null,
+        "source": "unknown"
+      },
+      "preprocess": {
+        "value": null,
+        "source": "unknown"
+      },
+      "precision": {
+        "value": null,
+        "source": "unknown"
+      },
+      "out_size": {
+        "value": null,
+        "source": "unknown"
+      },
+      "keypoints": {
+        "value": null,
+        "source": "unknown：权重不存关键点名称与顺序；有登记配方时见 registered_profiles"
+      },
+      "origin": {
+        "value": "unproven",
+        "source": "训练记录未保存产物哈希，无法证明本文件就是那次训练的输出"
+      },
+      "registered_profiles": [],
+      "unknown_fields": [
+        "keypoints",
+        "input_size",
+        "preprocess",
+        "precision",
+        "out_size"
+      ]
+    },
+    "outputs/checkpoints/m0_cad_mobilenet.pth": {
+      "bytes": 44326101,
+      "sha256": "4c0be64736ec7711f58788dd2a6646913b363e19d9680166a6fd6533382d163a",
+      "structure": {
+        "family": "mobilenet_v3",
+        "n_keypoints": 6,
+        "params": 11021622,
+        "verified_by": "strict_load_state_dict"
+      },
+      "training_record": {
+        "source": "missing"
+      },
+      "input_size": {
+        "value": null,
+        "source": "unknown"
+      },
+      "preprocess": {
+        "value": null,
+        "source": "unknown"
+      },
+      "precision": {
+        "value": null,
+        "source": "unknown"
+      },
+      "out_size": {
+        "value": null,
+        "source": "unknown"
+      },
+      "keypoints": {
+        "value": null,
+        "source": "unknown：权重不存关键点名称与顺序；有登记配方时见 registered_profiles"
+      },
+      "origin": {
+        "value": "unproven",
+        "source": "训练记录未保存产物哈希，无法证明本文件就是那次训练的输出"
+      },
+      "registered_profiles": [],
+      "unknown_fields": [
+        "keypoints",
+        "input_size",
+        "preprocess",
+        "precision",
+        "out_size"
+      ]
+    },
+    "outputs/checkpoints/m0_cad_resnet5.pth": {
+      "bytes": 54081129,
+      "sha256": "01b2f0cfb79a47f592b838863a49f0b9514f6b176f9fed19f514cd6cd306da11",
+      "structure": {
+        "family": "resnet18",
+        "n_keypoints": 5,
+        "params": 13499717,
+        "verified_by": "strict_load_state_dict"
+      },
+      "training_record": {
+        "source": "missing"
+      },
+      "input_size": {
+        "value": null,
+        "source": "unknown"
+      },
+      "preprocess": {
+        "value": null,
+        "source": "unknown"
+      },
+      "precision": {
+        "value": null,
+        "source": "unknown"
+      },
+      "out_size": {
+        "value": null,
+        "source": "unknown"
+      },
+      "keypoints": {
+        "value": null,
+        "source": "unknown：权重不存关键点名称与顺序；有登记配方时见 registered_profiles"
+      },
+      "origin": {
+        "value": "unproven",
+        "source": "训练记录未保存产物哈希，无法证明本文件就是那次训练的输出"
+      },
+      "registered_profiles": [],
+      "unknown_fields": [
+        "keypoints",
+        "input_size",
+        "preprocess",
+        "precision",
+        "out_size"
+      ]
+    },
+    "outputs/checkpoints/m0_cad_tiny.pth": {
+      "bytes": 1709069,
+      "sha256": "97c5945fd767de661a2fc4f78f5e104d1d7a540c7c4e775f9cf80814b59c4105",
+      "structure": {
+        "family": "tiny",
+        "n_keypoints": 6,
+        "params": 425542,
+        "verified_by": "strict_load_state_dict"
+      },
+      "training_record": {
+        "source": "missing"
+      },
+      "input_size": {
+        "value": null,
+        "source": "unknown"
+      },
+      "preprocess": {
+        "value": null,
+        "source": "unknown"
+      },
+      "precision": {
+        "value": null,
+        "source": "unknown"
+      },
+      "out_size": {
+        "value": null,
+        "source": "unknown"
+      },
+      "keypoints": {
+        "value": null,
+        "source": "unknown：权重不存关键点名称与顺序；有登记配方时见 registered_profiles"
+      },
+      "origin": {
+        "value": "unproven",
+        "source": "训练记录未保存产物哈希，无法证明本文件就是那次训练的输出"
+      },
+      "registered_profiles": [],
+      "unknown_fields": [
+        "keypoints",
+        "input_size",
+        "preprocess",
+        "precision",
+        "out_size"
+      ]
+    },
+    "outputs/checkpoints/m0_ft320.pth": {
+      "bytes": 54081349,
+      "sha256": "357293bce970c327832079a778ea4692923ef6e3ffe8006d68c754c6b3c3a0f3",
+      "structure": {
+        "family": "resnet18",
+        "n_keypoints": 9,
+        "params": 13499977,
+        "verified_by": "strict_load_state_dict"
+      },
+      "training_record": {
+        "source": "outputs/tb_zh/m0_ft320/events.out.tfevents.1792952325.Mar14z.101292.0",
+        "model": "resnet18",
+        "preprocess": "gamma",
+        "input_size": "320x240",
+        "stride": 4,
+        "drop_gripper": false,
+        "steps": 1600,
+        "batch_size": 8,
+        "lr": 0.0005,
+        "rand_gamma": 0.0,
+        "consistency": 0.0,
+        "no_amp": false,
+        "train_root": "data/synthetic/m0_seq/train",
+        "model_agrees_with_structure": true
+      },
+      "input_size": {
+        "value": {
+          "width": 320,
+          "height": 240
+        },
+        "source": "outputs/tb_zh/m0_ft320/events.out.tfevents.1792952325.Mar14z.101292.0"
+      },
+      "preprocess": {
+        "value": "gamma",
+        "source": "outputs/tb_zh/m0_ft320/events.out.tfevents.1792952325.Mar14z.101292.0"
+      },
+      "precision": {
+        "value": {
+          "amp": true
+        },
+        "source": "outputs/tb_zh/m0_ft320/events.out.tfevents.1792952325.Mar14z.101292.0#no_amp"
+      },
+      "out_size": {
+        "value": {
+          "width": 160,
+          "height": 120
+        },
+        "source": "outputs/tb_zh/m0_ft320/events.out.tfevents.1792952325.Mar14z.101292.0#stride（推导，权重本身不存输出尺寸）"
+      },
+      "keypoints": {
+        "value": null,
+        "source": "unknown：权重不存关键点名称与顺序；有登记配方时见 registered_profiles"
+      },
+      "origin": {
+        "value": "unproven",
+        "source": "训练记录未保存产物哈希，无法证明本文件就是那次训练的输出"
+      },
+      "registered_profiles": [
+        "legacy_replay/m0_ft320_archive",
+        "matched_recipe/m0_ft320_matched"
+      ],
+      "unknown_fields": [
+        "keypoints"
+      ]
+    },
+    "outputs/checkpoints/m0_ft320_best.pth": {
+      "bytes": 54082019,
+      "sha256": "761fce01313f06132668ea9b0f0b18e8e985bb82830a1a20cd54958eab690da0",
+      "structure": {
+        "family": "resnet18",
+        "n_keypoints": 9,
+        "params": 13499977,
+        "verified_by": "strict_load_state_dict"
+      },
+      "training_record": {
+        "source": "missing"
+      },
+      "input_size": {
+        "value": null,
+        "source": "unknown"
+      },
+      "preprocess": {
+        "value": null,
+        "source": "unknown"
+      },
+      "precision": {
+        "value": null,
+        "source": "unknown"
+      },
+      "out_size": {
+        "value": null,
+        "source": "unknown"
+      },
+      "keypoints": {
+        "value": null,
+        "source": "unknown：权重不存关键点名称与顺序；有登记配方时见 registered_profiles"
+      },
+      "origin": {
+        "value": "unproven",
+        "source": "训练记录未保存产物哈希，无法证明本文件就是那次训练的输出"
+      },
+      "registered_profiles": [],
+      "unknown_fields": [
+        "keypoints",
+        "input_size",
+        "preprocess",
+        "precision",
+        "out_size"
+      ]
+    },
+    "outputs/checkpoints/m0_ft640.pth": {
+      "bytes": 54081349,
+      "sha256": "2724c47a97c518df11d0b6d8b14d17720b50714380cdf1b57f323d95d20ff466",
+      "structure": {
+        "family": "resnet18",
+        "n_keypoints": 9,
+        "params": 13499977,
+        "verified_by": "strict_load_state_dict"
+      },
+      "training_record": {
+        "source": "outputs/tb_zh/m0_ft640/events.out.tfevents.1792952568.Mar14z.86872.0",
+        "model": "resnet18",
+        "preprocess": "gamma",
+        "input_size": "640x480",
+        "stride": 4,
+        "drop_gripper": false,
+        "steps": 1600,
+        "batch_size": 8,
+        "lr": 0.0005,
+        "rand_gamma": 0.0,
+        "consistency": 0.0,
+        "no_amp": false,
+        "train_root": "data/synthetic/m0_seq/train",
+        "model_agrees_with_structure": true
+      },
+      "input_size": {
+        "value": {
+          "width": 640,
+          "height": 480
+        },
+        "source": "outputs/tb_zh/m0_ft640/events.out.tfevents.1792952568.Mar14z.86872.0"
+      },
+      "preprocess": {
+        "value": "gamma",
+        "source": "outputs/tb_zh/m0_ft640/events.out.tfevents.1792952568.Mar14z.86872.0"
+      },
+      "precision": {
+        "value": {
+          "amp": true
+        },
+        "source": "outputs/tb_zh/m0_ft640/events.out.tfevents.1792952568.Mar14z.86872.0#no_amp"
+      },
+      "out_size": {
+        "value": {
+          "width": 160,
+          "height": 120
+        },
+        "source": "outputs/tb_zh/m0_ft640/events.out.tfevents.1792952568.Mar14z.86872.0#stride（推导，权重本身不存输出尺寸）"
+      },
+      "keypoints": {
+        "value": null,
+        "source": "unknown：权重不存关键点名称与顺序；有登记配方时见 registered_profiles"
+      },
+      "origin": {
+        "value": "unproven",
+        "source": "训练记录未保存产物哈希，无法证明本文件就是那次训练的输出"
+      },
+      "registered_profiles": [],
+      "unknown_fields": [
+        "keypoints"
+      ]
+    },
+    "outputs/checkpoints/m0_ft640_best.pth": {
+      "bytes": 54082019,
+      "sha256": "0bcf3f5637676b4bdd63d7529a7f1040fede813437006d60eef75919c40a1445",
+      "structure": {
+        "family": "resnet18",
+        "n_keypoints": 9,
+        "params": 13499977,
+        "verified_by": "strict_load_state_dict"
+      },
+      "training_record": {
+        "source": "missing"
+      },
+      "input_size": {
+        "value": null,
+        "source": "unknown"
+      },
+      "preprocess": {
+        "value": null,
+        "source": "unknown"
+      },
+      "precision": {
+        "value": null,
+        "source": "unknown"
+      },
+      "out_size": {
+        "value": null,
+        "source": "unknown"
+      },
+      "keypoints": {
+        "value": null,
+        "source": "unknown：权重不存关键点名称与顺序；有登记配方时见 registered_profiles"
+      },
+      "origin": {
+        "value": "unproven",
+        "source": "训练记录未保存产物哈希，无法证明本文件就是那次训练的输出"
+      },
+      "registered_profiles": [],
+      "unknown_fields": [
+        "keypoints",
+        "input_size",
+        "preprocess",
+        "precision",
+        "out_size"
+      ]
+    },
+    "outputs/checkpoints/m0_keypoints.pth": {
+      "bytes": 54081117,
+      "sha256": "6ba85b54742c0f8e13cd3b8ffcbddcf0325b368daaa3af61a42334f610519d3c",
+      "structure": {
+        "family": "resnet18",
+        "n_keypoints": 6,
+        "params": 13499782,
+        "verified_by": "strict_load_state_dict"
+      },
+      "training_record": {
+        "source": "missing"
+      },
+      "input_size": {
+        "value": null,
+        "source": "unknown"
+      },
+      "preprocess": {
+        "value": null,
+        "source": "unknown"
+      },
+      "precision": {
+        "value": null,
+        "source": "unknown"
+      },
+      "out_size": {
+        "value": null,
+        "source": "unknown"
+      },
+      "keypoints": {
+        "value": null,
+        "source": "unknown：权重不存关键点名称与顺序；有登记配方时见 registered_profiles"
+      },
+      "origin": {
+        "value": "unproven",
+        "source": "训练记录未保存产物哈希，无法证明本文件就是那次训练的输出"
+      },
+      "registered_profiles": [],
+      "unknown_fields": [
+        "keypoints",
+        "input_size",
+        "preprocess",
+        "precision",
+        "out_size"
+      ]
+    },
+    "outputs/checkpoints/m0_keypoints_stride2.pth": {
+      "bytes": 54081117,
+      "sha256": "6ba85b54742c0f8e13cd3b8ffcbddcf0325b368daaa3af61a42334f610519d3c",
+      "structure": {
+        "family": "resnet18",
+        "n_keypoints": 6,
+        "params": 13499782,
+        "verified_by": "strict_load_state_dict"
+      },
+      "training_record": {
+        "source": "missing"
+      },
+      "input_size": {
+        "value": null,
+        "source": "unknown"
+      },
+      "preprocess": {
+        "value": null,
+        "source": "unknown"
+      },
+      "precision": {
+        "value": null,
+        "source": "unknown"
+      },
+      "out_size": {
+        "value": null,
+        "source": "unknown"
+      },
+      "keypoints": {
+        "value": null,
+        "source": "unknown：权重不存关键点名称与顺序；有登记配方时见 registered_profiles"
+      },
+      "origin": {
+        "value": "unproven",
+        "source": "训练记录未保存产物哈希，无法证明本文件就是那次训练的输出"
+      },
+      "registered_profiles": [],
+      "unknown_fields": [
+        "keypoints",
+        "input_size",
+        "preprocess",
+        "precision",
+        "out_size"
+      ]
+    },
+    "outputs/checkpoints/m0_kp11_gamma.pth": {
+      "bytes": 54082531,
+      "sha256": "e4d1c9877f8d89fbb3bb6a5ad09015c5780f92cff07610b8187c0023b6ede978",
+      "structure": {
+        "family": "resnet18",
+        "n_keypoints": 11,
+        "params": 13500107,
+        "verified_by": "strict_load_state_dict"
+      },
+      "training_record": {
+        "source": "missing"
+      },
+      "input_size": {
+        "value": null,
+        "source": "unknown"
+      },
+      "preprocess": {
+        "value": null,
+        "source": "unknown"
+      },
+      "precision": {
+        "value": null,
+        "source": "unknown"
+      },
+      "out_size": {
+        "value": null,
+        "source": "unknown"
+      },
+      "keypoints": {
+        "value": null,
+        "source": "unknown：权重不存关键点名称与顺序；有登记配方时见 registered_profiles"
+      },
+      "origin": {
+        "value": "unproven",
+        "source": "训练记录未保存产物哈希，无法证明本文件就是那次训练的输出"
+      },
+      "registered_profiles": [],
+      "unknown_fields": [
+        "keypoints",
+        "input_size",
+        "preprocess",
+        "precision",
+        "out_size"
+      ]
+    },
+    "outputs/checkpoints/m0_kp9_resnet18.pth": {
+      "bytes": 54082287,
+      "sha256": "9eebd6f3d60f11772068ef7636a14114c7d7b2136637fea8ee7beaabf2faabb1",
+      "structure": {
+        "family": "resnet18",
+        "n_keypoints": 9,
+        "params": 13499977,
+        "verified_by": "strict_load_state_dict"
+      },
+      "training_record": {
+        "source": "missing"
+      },
+      "input_size": {
+        "value": null,
+        "source": "unknown"
+      },
+      "preprocess": {
+        "value": null,
+        "source": "unknown"
+      },
+      "precision": {
+        "value": null,
+        "source": "unknown"
+      },
+      "out_size": {
+        "value": null,
+        "source": "unknown"
+      },
+      "keypoints": {
+        "value": null,
+        "source": "unknown：权重不存关键点名称与顺序；有登记配方时见 registered_profiles"
+      },
+      "origin": {
+        "value": "unproven",
+        "source": "训练记录未保存产物哈希，无法证明本文件就是那次训练的输出"
+      },
+      "registered_profiles": [],
+      "unknown_fields": [
+        "keypoints",
+        "input_size",
+        "preprocess",
+        "precision",
+        "out_size"
+      ]
+    },
+    "outputs/checkpoints/m0_kp9b_blur.pth": {
+      "bytes": 54081885,
+      "sha256": "b2632a26a39aaa3c8d6f37089a6737081db91d8d88182a01afedcd679514ff7e",
+      "structure": {
+        "family": "resnet18",
+        "n_keypoints": 9,
+        "params": 13499977,
+        "verified_by": "strict_load_state_dict"
+      },
+      "training_record": {
+        "source": "outputs/tb/m0_kp9b_blur/events.out.tfevents.1792603858.Mar14z.133616.0",
+        "model": "resnet18",
+        "preprocess": "blur",
+        "input_size": null,
+        "stride": 4,
+        "drop_gripper": false,
+        "steps": 1000,
+        "batch_size": 64,
+        "lr": 0.003,
+        "rand_gamma": null,
+        "consistency": null,
+        "no_amp": false,
+        "train_root": "data/synthetic/m0_kp9b/train",
+        "model_agrees_with_structure": true
+      },
+      "input_size": {
+        "value": null,
+        "source": "unknown（该次训练的 args 里没有此字段）"
+      },
+      "preprocess": {
+        "value": "blur",
+        "source": "outputs/tb/m0_kp9b_blur/events.out.tfevents.1792603858.Mar14z.133616.0"
+      },
+      "precision": {
+        "value": {
+          "amp": true
+        },
+        "source": "outputs/tb/m0_kp9b_blur/events.out.tfevents.1792603858.Mar14z.133616.0#no_amp"
+      },
+      "out_size": {
+        "value": {
+          "width": 160,
+          "height": 120
+        },
+        "source": "outputs/tb/m0_kp9b_blur/events.out.tfevents.1792603858.Mar14z.133616.0#stride（推导，权重本身不存输出尺寸）"
+      },
+      "keypoints": {
+        "value": null,
+        "source": "unknown：权重不存关键点名称与顺序；有登记配方时见 registered_profiles"
+      },
+      "origin": {
+        "value": "unproven",
+        "source": "训练记录未保存产物哈希，无法证明本文件就是那次训练的输出"
+      },
+      "registered_profiles": [],
+      "unknown_fields": [
+        "keypoints",
+        "input_size"
+      ]
+    },
+    "outputs/checkpoints/m0_kp9b_equalize.pth": {
+      "bytes": 54082421,
+      "sha256": "9bb57d46573ca3203e1ee0a318e415e9f77e70b4de3fd4f06c16d7182c3e6949",
+      "structure": {
+        "family": "resnet18",
+        "n_keypoints": 9,
+        "params": 13499977,
+        "verified_by": "strict_load_state_dict"
+      },
+      "training_record": {
+        "source": "outputs/tb/m0_kp9b_equalize/events.out.tfevents.1792605557.Mar14z.121648.0",
+        "model": "resnet18",
+        "preprocess": "equalize",
+        "input_size": null,
+        "stride": 4,
+        "drop_gripper": false,
+        "steps": 1000,
+        "batch_size": 64,
+        "lr": 0.003,
+        "rand_gamma": null,
+        "consistency": null,
+        "no_amp": false,
+        "train_root": "data/synthetic/m0_kp9b/train",
+        "model_agrees_with_structure": true
+      },
+      "input_size": {
+        "value": null,
+        "source": "unknown（该次训练的 args 里没有此字段）"
+      },
+      "preprocess": {
+        "value": "equalize",
+        "source": "outputs/tb/m0_kp9b_equalize/events.out.tfevents.1792605557.Mar14z.121648.0"
+      },
+      "precision": {
+        "value": {
+          "amp": true
+        },
+        "source": "outputs/tb/m0_kp9b_equalize/events.out.tfevents.1792605557.Mar14z.121648.0#no_amp"
+      },
+      "out_size": {
+        "value": {
+          "width": 160,
+          "height": 120
+        },
+        "source": "outputs/tb/m0_kp9b_equalize/events.out.tfevents.1792605557.Mar14z.121648.0#stride（推导，权重本身不存输出尺寸）"
+      },
+      "keypoints": {
+        "value": null,
+        "source": "unknown：权重不存关键点名称与顺序；有登记配方时见 registered_profiles"
+      },
+      "origin": {
+        "value": "unproven",
+        "source": "训练记录未保存产物哈希，无法证明本文件就是那次训练的输出"
+      },
+      "registered_profiles": [],
+      "unknown_fields": [
+        "keypoints",
+        "input_size"
+      ]
+    },
+    "outputs/checkpoints/m0_kp9b_gamma.pth": {
+      "bytes": 54082019,
+      "sha256": "6cf78591310c87a8f9a39acd431808ed002d8273956ef07e56e5bf5ee65a8488",
+      "structure": {
+        "family": "resnet18",
+        "n_keypoints": 9,
+        "params": 13499977,
+        "verified_by": "strict_load_state_dict"
+      },
+      "training_record": {
+        "source": "outputs/tb/m0_kp9b_gamma/events.out.tfevents.1792602945.Mar14z.81400.0",
+        "model": "resnet18",
+        "preprocess": "gamma",
+        "input_size": null,
+        "stride": 4,
+        "drop_gripper": false,
+        "steps": 1000,
+        "batch_size": 64,
+        "lr": 0.003,
+        "rand_gamma": null,
+        "consistency": null,
+        "no_amp": false,
+        "train_root": "data/synthetic/m0_kp9b/train",
+        "model_agrees_with_structure": true
+      },
+      "input_size": {
+        "value": null,
+        "source": "unknown（该次训练的 args 里没有此字段）"
+      },
+      "preprocess": {
+        "value": "gamma",
+        "source": "outputs/tb/m0_kp9b_gamma/events.out.tfevents.1792602945.Mar14z.81400.0"
+      },
+      "precision": {
+        "value": {
+          "amp": true
+        },
+        "source": "outputs/tb/m0_kp9b_gamma/events.out.tfevents.1792602945.Mar14z.81400.0#no_amp"
+      },
+      "out_size": {
+        "value": {
+          "width": 160,
+          "height": 120
+        },
+        "source": "outputs/tb/m0_kp9b_gamma/events.out.tfevents.1792602945.Mar14z.81400.0#stride（推导，权重本身不存输出尺寸）"
+      },
+      "keypoints": {
+        "value": null,
+        "source": "unknown：权重不存关键点名称与顺序；有登记配方时见 registered_profiles"
+      },
+      "origin": {
+        "value": "unproven",
+        "source": "训练记录未保存产物哈希，无法证明本文件就是那次训练的输出"
+      },
+      "registered_profiles": [],
+      "unknown_fields": [
+        "keypoints",
+        "input_size"
+      ]
+    },
+    "outputs/checkpoints/m0_kp9b_gray.pth": {
+      "bytes": 54081885,
+      "sha256": "1c5333e3264facac52445fa93ff85a21ba649d86021e88da673ded426f1bc5d2",
+      "structure": {
+        "family": "resnet18",
+        "n_keypoints": 9,
+        "params": 13499977,
+        "verified_by": "strict_load_state_dict"
+      },
+      "training_record": {
+        "source": "outputs/tb/m0_kp9b_gray/events.out.tfevents.1792602065.Mar14z.107768.0",
+        "model": "resnet18",
+        "preprocess": "gray",
+        "input_size": null,
+        "stride": 4,
+        "drop_gripper": false,
+        "steps": 1000,
+        "batch_size": 64,
+        "lr": 0.003,
+        "rand_gamma": null,
+        "consistency": null,
+        "no_amp": false,
+        "train_root": "data/synthetic/m0_kp9b/train",
+        "model_agrees_with_structure": true
+      },
+      "input_size": {
+        "value": null,
+        "source": "unknown（该次训练的 args 里没有此字段）"
+      },
+      "preprocess": {
+        "value": "gray",
+        "source": "outputs/tb/m0_kp9b_gray/events.out.tfevents.1792602065.Mar14z.107768.0"
+      },
+      "precision": {
+        "value": {
+          "amp": true
+        },
+        "source": "outputs/tb/m0_kp9b_gray/events.out.tfevents.1792602065.Mar14z.107768.0#no_amp"
+      },
+      "out_size": {
+        "value": {
+          "width": 160,
+          "height": 120
+        },
+        "source": "outputs/tb/m0_kp9b_gray/events.out.tfevents.1792602065.Mar14z.107768.0#stride（推导，权重本身不存输出尺寸）"
+      },
+      "keypoints": {
+        "value": null,
+        "source": "unknown：权重不存关键点名称与顺序；有登记配方时见 registered_profiles"
+      },
+      "origin": {
+        "value": "unproven",
+        "source": "训练记录未保存产物哈希，无法证明本文件就是那次训练的输出"
+      },
+      "registered_profiles": [],
+      "unknown_fields": [
+        "keypoints",
+        "input_size"
+      ]
+    },
+    "outputs/checkpoints/m0_kp9b_norm.pth": {
+      "bytes": 54081885,
+      "sha256": "a0902f11ae84e4d2d62ab1459ec94326bc957fba4189fa5adbbefe3a03f89190",
+      "structure": {
+        "family": "resnet18",
+        "n_keypoints": 9,
+        "params": 13499977,
+        "verified_by": "strict_load_state_dict"
+      },
+      "training_record": {
+        "source": "outputs/tb/m0_kp9b_norm/events.out.tfevents.1792604722.Mar14z.131768.0",
+        "model": "resnet18",
+        "preprocess": "norm",
+        "input_size": null,
+        "stride": 4,
+        "drop_gripper": false,
+        "steps": 1000,
+        "batch_size": 64,
+        "lr": 0.003,
+        "rand_gamma": null,
+        "consistency": null,
+        "no_amp": false,
+        "train_root": "data/synthetic/m0_kp9b/train",
+        "model_agrees_with_structure": true
+      },
+      "input_size": {
+        "value": null,
+        "source": "unknown（该次训练的 args 里没有此字段）"
+      },
+      "preprocess": {
+        "value": "norm",
+        "source": "outputs/tb/m0_kp9b_norm/events.out.tfevents.1792604722.Mar14z.131768.0"
+      },
+      "precision": {
+        "value": {
+          "amp": true
+        },
+        "source": "outputs/tb/m0_kp9b_norm/events.out.tfevents.1792604722.Mar14z.131768.0#no_amp"
+      },
+      "out_size": {
+        "value": {
+          "width": 160,
+          "height": 120
+        },
+        "source": "outputs/tb/m0_kp9b_norm/events.out.tfevents.1792604722.Mar14z.131768.0#stride（推导，权重本身不存输出尺寸）"
+      },
+      "keypoints": {
+        "value": null,
+        "source": "unknown：权重不存关键点名称与顺序；有登记配方时见 registered_profiles"
+      },
+      "origin": {
+        "value": "unproven",
+        "source": "训练记录未保存产物哈希，无法证明本文件就是那次训练的输出"
+      },
+      "registered_profiles": [],
+      "unknown_fields": [
+        "keypoints",
+        "input_size"
+      ]
+    },
+    "outputs/checkpoints/m0_kp9b_randgamma.pth": {
+      "bytes": 54082555,
+      "sha256": "a996c0298cd83daa1cd22c6e6ccec4472398e64289eb124570c28309bc937de4",
+      "structure": {
+        "family": "resnet18",
+        "n_keypoints": 9,
+        "params": 13499977,
+        "verified_by": "strict_load_state_dict"
+      },
+      "training_record": {
+        "source": "outputs/tb/m0_kp9b_randgamma/events.out.tfevents.1792686452.Mar14z.112996.0",
+        "model": "resnet18",
+        "preprocess": "none",
+        "input_size": null,
+        "stride": 4,
+        "drop_gripper": false,
+        "steps": 1000,
+        "batch_size": 64,
+        "lr": 0.003,
+        "rand_gamma": 0.3,
+        "consistency": null,
+        "no_amp": false,
+        "train_root": "data/synthetic/m0_kp9b/train",
+        "model_agrees_with_structure": true
+      },
+      "input_size": {
+        "value": null,
+        "source": "unknown（该次训练的 args 里没有此字段）"
+      },
+      "preprocess": {
+        "value": "none",
+        "source": "outputs/tb/m0_kp9b_randgamma/events.out.tfevents.1792686452.Mar14z.112996.0"
+      },
+      "precision": {
+        "value": {
+          "amp": true
+        },
+        "source": "outputs/tb/m0_kp9b_randgamma/events.out.tfevents.1792686452.Mar14z.112996.0#no_amp"
+      },
+      "out_size": {
+        "value": {
+          "width": 160,
+          "height": 120
+        },
+        "source": "outputs/tb/m0_kp9b_randgamma/events.out.tfevents.1792686452.Mar14z.112996.0#stride（推导，权重本身不存输出尺寸）"
+      },
+      "keypoints": {
+        "value": null,
+        "source": "unknown：权重不存关键点名称与顺序；有登记配方时见 registered_profiles"
+      },
+      "origin": {
+        "value": "unproven",
+        "source": "训练记录未保存产物哈希，无法证明本文件就是那次训练的输出"
+      },
+      "registered_profiles": [],
+      "unknown_fields": [
+        "keypoints",
+        "input_size"
+      ]
+    },
+    "outputs/checkpoints/m0_kp9b_resnet18.pth": {
+      "bytes": 54082421,
+      "sha256": "b129d30f80121a89812ee05711d20fc8b15236b39e5562d4c668e4ac44c71893",
+      "structure": {
+        "family": "resnet18",
+        "n_keypoints": 9,
+        "params": 13499977,
+        "verified_by": "strict_load_state_dict"
+      },
+      "training_record": {
+        "source": "outputs/tb/m0_kp9b_resnet18/events.out.tfevents.1792596589.Mar14z.103372.0",
+        "model": "resnet18",
+        "preprocess": null,
+        "input_size": null,
+        "stride": 4,
+        "drop_gripper": false,
+        "steps": 1000,
+        "batch_size": 64,
+        "lr": 0.003,
+        "rand_gamma": null,
+        "consistency": null,
+        "no_amp": false,
+        "train_root": "data/synthetic/m0_kp9b/train",
+        "model_agrees_with_structure": true
+      },
+      "input_size": {
+        "value": null,
+        "source": "unknown（该次训练的 args 里没有此字段）"
+      },
+      "preprocess": {
+        "value": null,
+        "source": "unknown（该次训练的 args 里没有此字段）"
+      },
+      "precision": {
+        "value": {
+          "amp": true
+        },
+        "source": "outputs/tb/m0_kp9b_resnet18/events.out.tfevents.1792596589.Mar14z.103372.0#no_amp"
+      },
+      "out_size": {
+        "value": {
+          "width": 160,
+          "height": 120
+        },
+        "source": "outputs/tb/m0_kp9b_resnet18/events.out.tfevents.1792596589.Mar14z.103372.0#stride（推导，权重本身不存输出尺寸）"
+      },
+      "keypoints": {
+        "value": null,
+        "source": "unknown：权重不存关键点名称与顺序；有登记配方时见 registered_profiles"
+      },
+      "origin": {
+        "value": "unproven",
+        "source": "训练记录未保存产物哈希，无法证明本文件就是那次训练的输出"
+      },
+      "registered_profiles": [],
+      "unknown_fields": [
+        "keypoints",
+        "input_size",
+        "preprocess"
+      ]
+    },
+    "outputs/checkpoints/m0_kp9c_gamma.pth": {
+      "bytes": 54082019,
+      "sha256": "fb3623847c4016ad1c7a6b2598c3265b2eb88ed3f1c401726d0c07760d40354a",
+      "structure": {
+        "family": "resnet18",
+        "n_keypoints": 9,
+        "params": 13499977,
+        "verified_by": "strict_load_state_dict"
+      },
+      "training_record": {
+        "source": "missing"
+      },
+      "input_size": {
+        "value": null,
+        "source": "unknown"
+      },
+      "preprocess": {
+        "value": null,
+        "source": "unknown"
+      },
+      "precision": {
+        "value": null,
+        "source": "unknown"
+      },
+      "out_size": {
+        "value": null,
+        "source": "unknown"
+      },
+      "keypoints": {
+        "value": null,
+        "source": "unknown：权重不存关键点名称与顺序；有登记配方时见 registered_profiles"
+      },
+      "origin": {
+        "value": "unproven",
+        "source": "训练记录未保存产物哈希，无法证明本文件就是那次训练的输出"
+      },
+      "registered_profiles": [],
+      "unknown_fields": [
+        "keypoints",
+        "input_size",
+        "preprocess",
+        "precision",
+        "out_size"
+      ]
+    },
+    "outputs/checkpoints/m0_kp_resnet18.pth": {
+      "bytes": 54081385,
+      "sha256": "f37a7e07dadcd64c607a0b1a68a5acaa1513af49a913ee4a73adb7cdc91d0dc5",
+      "structure": {
+        "family": "resnet18",
+        "n_keypoints": 6,
+        "params": 13499782,
+        "verified_by": "strict_load_state_dict"
+      },
+      "training_record": {
+        "source": "missing"
+      },
+      "input_size": {
+        "value": null,
+        "source": "unknown"
+      },
+      "preprocess": {
+        "value": null,
+        "source": "unknown"
+      },
+      "precision": {
+        "value": null,
+        "source": "unknown"
+      },
+      "out_size": {
+        "value": null,
+        "source": "unknown"
+      },
+      "keypoints": {
+        "value": null,
+        "source": "unknown：权重不存关键点名称与顺序；有登记配方时见 registered_profiles"
+      },
+      "origin": {
+        "value": "unproven",
+        "source": "训练记录未保存产物哈希，无法证明本文件就是那次训练的输出"
+      },
+      "registered_profiles": [],
+      "unknown_fields": [
+        "keypoints",
+        "input_size",
+        "preprocess",
+        "precision",
+        "out_size"
+      ]
+    },
+    "outputs/checkpoints/m0_overfit.pth": {
+      "bytes": 1709045,
+      "sha256": "4f6cbd5b9532311e574717f474e80abe02976da281343b5306497d856deab35a",
+      "structure": {
+        "family": "tiny",
+        "n_keypoints": 6,
+        "params": 425542,
+        "verified_by": "strict_load_state_dict"
+      },
+      "training_record": {
+        "source": "missing"
+      },
+      "input_size": {
+        "value": null,
+        "source": "unknown"
+      },
+      "preprocess": {
+        "value": null,
+        "source": "unknown"
+      },
+      "precision": {
+        "value": null,
+        "source": "unknown"
+      },
+      "out_size": {
+        "value": null,
+        "source": "unknown"
+      },
+      "keypoints": {
+        "value": null,
+        "source": "unknown：权重不存关键点名称与顺序；有登记配方时见 registered_profiles"
+      },
+      "origin": {
+        "value": "unproven",
+        "source": "训练记录未保存产物哈希，无法证明本文件就是那次训练的输出"
+      },
+      "registered_profiles": [],
+      "unknown_fields": [
+        "keypoints",
+        "input_size",
+        "preprocess",
+        "precision",
+        "out_size"
+      ]
+    },
+    "outputs/checkpoints/m0_plain_resnet18.pth": {
+      "bytes": 54081787,
+      "sha256": "307e84bf04fb7b6d36736650b8a0c42603fb403de3fee99b8b24a1dacebede72",
+      "structure": {
+        "family": "resnet18",
+        "n_keypoints": 6,
+        "params": 13499782,
+        "verified_by": "strict_load_state_dict"
+      },
+      "training_record": {
+        "source": "outputs/tb/m0_plain_resnet18/events.out.tfevents.1792598634.Mar14z.113652.0",
+        "model": "resnet18",
+        "preprocess": null,
+        "input_size": null,
+        "stride": 4,
+        "drop_gripper": false,
+        "steps": 1000,
+        "batch_size": 64,
+        "lr": 0.003,
+        "rand_gamma": null,
+        "consistency": null,
+        "no_amp": false,
+        "train_root": "data/synthetic/m0_plain/train",
+        "model_agrees_with_structure": true
+      },
+      "input_size": {
+        "value": null,
+        "source": "unknown（该次训练的 args 里没有此字段）"
+      },
+      "preprocess": {
+        "value": null,
+        "source": "unknown（该次训练的 args 里没有此字段）"
+      },
+      "precision": {
+        "value": {
+          "amp": true
+        },
+        "source": "outputs/tb/m0_plain_resnet18/events.out.tfevents.1792598634.Mar14z.113652.0#no_amp"
+      },
+      "out_size": {
+        "value": {
+          "width": 160,
+          "height": 120
+        },
+        "source": "outputs/tb/m0_plain_resnet18/events.out.tfevents.1792598634.Mar14z.113652.0#stride（推导，权重本身不存输出尺寸）"
+      },
+      "keypoints": {
+        "value": null,
+        "source": "unknown：权重不存关键点名称与顺序；有登记配方时见 registered_profiles"
+      },
+      "origin": {
+        "value": "unproven",
+        "source": "训练记录未保存产物哈希，无法证明本文件就是那次训练的输出"
+      },
+      "registered_profiles": [],
+      "unknown_fields": [
+        "keypoints",
+        "input_size",
+        "preprocess"
+      ]
+    },
+    "outputs/checkpoints/m0_seq_cons.pth": {
+      "bytes": 54081751,
+      "sha256": "eb625a986d3d2cbdb6e4517de2d6f670f7ccb26a726439eeb4680e62d0fcdce4",
+      "structure": {
+        "family": "resnet18",
+        "n_keypoints": 9,
+        "params": 13499977,
+        "verified_by": "strict_load_state_dict"
+      },
+      "training_record": {
+        "source": "outputs/tb_zh/m0_seq_cons/events.out.tfevents.1792946340.Mar14z.130540.0",
+        "model": "resnet18",
+        "preprocess": "gamma",
+        "input_size": null,
+        "stride": 4,
+        "drop_gripper": false,
+        "steps": 3200,
+        "batch_size": 64,
+        "lr": 0.003,
+        "rand_gamma": 0.3,
+        "consistency": 0.05,
+        "no_amp": false,
+        "train_root": "data/synthetic/m0_seq/train",
+        "model_agrees_with_structure": true
+      },
+      "input_size": {
+        "value": null,
+        "source": "unknown（该次训练的 args 里没有此字段）"
+      },
+      "preprocess": {
+        "value": "gamma",
+        "source": "outputs/tb_zh/m0_seq_cons/events.out.tfevents.1792946340.Mar14z.130540.0"
+      },
+      "precision": {
+        "value": {
+          "amp": true
+        },
+        "source": "outputs/tb_zh/m0_seq_cons/events.out.tfevents.1792946340.Mar14z.130540.0#no_amp"
+      },
+      "out_size": {
+        "value": {
+          "width": 160,
+          "height": 120
+        },
+        "source": "outputs/tb_zh/m0_seq_cons/events.out.tfevents.1792946340.Mar14z.130540.0#stride（推导，权重本身不存输出尺寸）"
+      },
+      "keypoints": {
+        "value": null,
+        "source": "unknown：权重不存关键点名称与顺序；有登记配方时见 registered_profiles"
+      },
+      "origin": {
+        "value": "unproven",
+        "source": "训练记录未保存产物哈希，无法证明本文件就是那次训练的输出"
+      },
+      "registered_profiles": [],
+      "unknown_fields": [
+        "keypoints",
+        "input_size"
+      ]
+    },
+    "outputs/checkpoints/m0_seq_cons_best.pth": {
+      "bytes": 54082421,
+      "sha256": "1ac64aec0cac962fe31a94f7073dbbabc3b84ea5ed381f65f1f971cd9be67838",
+      "structure": {
+        "family": "resnet18",
+        "n_keypoints": 9,
+        "params": 13499977,
+        "verified_by": "strict_load_state_dict"
+      },
+      "training_record": {
+        "source": "missing"
+      },
+      "input_size": {
+        "value": null,
+        "source": "unknown"
+      },
+      "preprocess": {
+        "value": null,
+        "source": "unknown"
+      },
+      "precision": {
+        "value": null,
+        "source": "unknown"
+      },
+      "out_size": {
+        "value": null,
+        "source": "unknown"
+      },
+      "keypoints": {
+        "value": null,
+        "source": "unknown：权重不存关键点名称与顺序；有登记配方时见 registered_profiles"
+      },
+      "origin": {
+        "value": "unproven",
+        "source": "训练记录未保存产物哈希，无法证明本文件就是那次训练的输出"
+      },
+      "registered_profiles": [],
+      "unknown_fields": [
+        "keypoints",
+        "input_size",
+        "preprocess",
+        "precision",
+        "out_size"
+      ]
+    },
+    "outputs/checkpoints/m0_seq_cos.pth": {
+      "bytes": 54081617,
+      "sha256": "353e41e1d4247c59b4daa163c812e7edfa95eaaf90aa812414123e0975d417f4",
+      "structure": {
+        "family": "resnet18",
+        "n_keypoints": 9,
+        "params": 13499977,
+        "verified_by": "strict_load_state_dict"
+      },
+      "training_record": {
+        "source": "outputs/tb_zh/m0_seq_cos/events.out.tfevents.1792942667.Mar14z.131920.0",
+        "model": "resnet18",
+        "preprocess": "gamma",
+        "input_size": null,
+        "stride": 4,
+        "drop_gripper": false,
+        "steps": 3200,
+        "batch_size": 64,
+        "lr": 0.003,
+        "rand_gamma": 0.0,
+        "consistency": null,
+        "no_amp": false,
+        "train_root": "data/synthetic/m0_seq/train",
+        "model_agrees_with_structure": true
+      },
+      "input_size": {
+        "value": null,
+        "source": "unknown（该次训练的 args 里没有此字段）"
+      },
+      "preprocess": {
+        "value": "gamma",
+        "source": "outputs/tb_zh/m0_seq_cos/events.out.tfevents.1792942667.Mar14z.131920.0"
+      },
+      "precision": {
+        "value": {
+          "amp": true
+        },
+        "source": "outputs/tb_zh/m0_seq_cos/events.out.tfevents.1792942667.Mar14z.131920.0#no_amp"
+      },
+      "out_size": {
+        "value": {
+          "width": 160,
+          "height": 120
+        },
+        "source": "outputs/tb_zh/m0_seq_cos/events.out.tfevents.1792942667.Mar14z.131920.0#stride（推导，权重本身不存输出尺寸）"
+      },
+      "keypoints": {
+        "value": null,
+        "source": "unknown：权重不存关键点名称与顺序；有登记配方时见 registered_profiles"
+      },
+      "origin": {
+        "value": "unproven",
+        "source": "训练记录未保存产物哈希，无法证明本文件就是那次训练的输出"
+      },
+      "registered_profiles": [],
+      "unknown_fields": [
+        "keypoints",
+        "input_size"
+      ]
+    },
+    "outputs/checkpoints/m0_seq_cos_best.pth": {
+      "bytes": 54082287,
+      "sha256": "582bf2a54fdb474b3e910318c4cb9d910e0be1e19b7edc5c6b9258e1d346ae68",
+      "structure": {
+        "family": "resnet18",
+        "n_keypoints": 9,
+        "params": 13499977,
+        "verified_by": "strict_load_state_dict"
+      },
+      "training_record": {
+        "source": "missing"
+      },
+      "input_size": {
+        "value": null,
+        "source": "unknown"
+      },
+      "preprocess": {
+        "value": null,
+        "source": "unknown"
+      },
+      "precision": {
+        "value": null,
+        "source": "unknown"
+      },
+      "out_size": {
+        "value": null,
+        "source": "unknown"
+      },
+      "keypoints": {
+        "value": null,
+        "source": "unknown：权重不存关键点名称与顺序；有登记配方时见 registered_profiles"
+      },
+      "origin": {
+        "value": "unproven",
+        "source": "训练记录未保存产物哈希，无法证明本文件就是那次训练的输出"
+      },
+      "registered_profiles": [],
+      "unknown_fields": [
+        "keypoints",
+        "input_size",
+        "preprocess",
+        "precision",
+        "out_size"
+      ]
+    },
+    "outputs/checkpoints/m0_seq_gamma.pth": {
+      "bytes": 54081885,
+      "sha256": "a04ac1f9fe7473b04ea44e31a382820b1dba3827b27e2d36510aac67d0796d78",
+      "structure": {
+        "family": "resnet18",
+        "n_keypoints": 9,
+        "params": 13499977,
+        "verified_by": "strict_load_state_dict"
+      },
+      "training_record": {
+        "source": "missing"
+      },
+      "input_size": {
+        "value": null,
+        "source": "unknown"
+      },
+      "preprocess": {
+        "value": null,
+        "source": "unknown"
+      },
+      "precision": {
+        "value": null,
+        "source": "unknown"
+      },
+      "out_size": {
+        "value": null,
+        "source": "unknown"
+      },
+      "keypoints": {
+        "value": null,
+        "source": "unknown：权重不存关键点名称与顺序；有登记配方时见 registered_profiles"
+      },
+      "origin": {
+        "value": "unproven",
+        "source": "训练记录未保存产物哈希，无法证明本文件就是那次训练的输出"
+      },
+      "registered_profiles": [],
+      "unknown_fields": [
+        "keypoints",
+        "input_size",
+        "preprocess",
+        "precision",
+        "out_size"
+      ]
+    }
+  },
+  "unresolved": [
+    {
+      "checkpoint": "m0_cad_keypoints.pth",
+      "unknown": [
+        "keypoints",
+        "input_size",
+        "preprocess",
+        "precision",
+        "out_size"
+      ]
+    },
+    {
+      "checkpoint": "m0_cad_mobilenet.pth",
+      "unknown": [
+        "keypoints",
+        "input_size",
+        "preprocess",
+        "precision",
+        "out_size"
+      ]
+    },
+    {
+      "checkpoint": "m0_cad_resnet5.pth",
+      "unknown": [
+        "keypoints",
+        "input_size",
+        "preprocess",
+        "precision",
+        "out_size"
+      ]
+    },
+    {
+      "checkpoint": "m0_cad_tiny.pth",
+      "unknown": [
+        "keypoints",
+        "input_size",
+        "preprocess",
+        "precision",
+        "out_size"
+      ]
+    },
+    {
+      "checkpoint": "m0_ft320.pth",
+      "unknown": [
+        "keypoints"
+      ]
+    },
+    {
+      "checkpoint": "m0_ft320_best.pth",
+      "unknown": [
+        "keypoints",
+        "input_size",
+        "preprocess",
+        "precision",
+        "out_size"
+      ]
+    },
+    {
+      "checkpoint": "m0_ft640.pth",
+      "unknown": [
+        "keypoints"
+      ]
+    },
+    {
+      "checkpoint": "m0_ft640_best.pth",
+      "unknown": [
+        "keypoints",
+        "input_size",
+        "preprocess",
+        "precision",
+        "out_size"
+      ]
+    },
+    {
+      "checkpoint": "m0_keypoints.pth",
+      "unknown": [
+        "keypoints",
+        "input_size",
+        "preprocess",
+        "precision",
+        "out_size"
+      ]
+    },
+    {
+      "checkpoint": "m0_keypoints_stride2.pth",
+      "unknown": [
+        "keypoints",
+        "input_size",
+        "preprocess",
+        "precision",
+        "out_size"
+      ]
+    },
+    {
+      "checkpoint": "m0_kp11_gamma.pth",
+      "unknown": [
+        "keypoints",
+        "input_size",
+        "preprocess",
+        "precision",
+        "out_size"
+      ]
+    },
+    {
+      "checkpoint": "m0_kp9_resnet18.pth",
+      "unknown": [
+        "keypoints",
+        "input_size",
+        "preprocess",
+        "precision",
+        "out_size"
+      ]
+    },
+    {
+      "checkpoint": "m0_kp9b_blur.pth",
+      "unknown": [
+        "keypoints",
+        "input_size"
+      ]
+    },
+    {
+      "checkpoint": "m0_kp9b_equalize.pth",
+      "unknown": [
+        "keypoints",
+        "input_size"
+      ]
+    },
+    {
+      "checkpoint": "m0_kp9b_gamma.pth",
+      "unknown": [
+        "keypoints",
+        "input_size"
+      ]
+    },
+    {
+      "checkpoint": "m0_kp9b_gray.pth",
+      "unknown": [
+        "keypoints",
+        "input_size"
+      ]
+    },
+    {
+      "checkpoint": "m0_kp9b_norm.pth",
+      "unknown": [
+        "keypoints",
+        "input_size"
+      ]
+    },
+    {
+      "checkpoint": "m0_kp9b_randgamma.pth",
+      "unknown": [
+        "keypoints",
+        "input_size"
+      ]
+    },
+    {
+      "checkpoint": "m0_kp9b_resnet18.pth",
+      "unknown": [
+        "keypoints",
+        "input_size",
+        "preprocess"
+      ]
+    },
+    {
+      "checkpoint": "m0_kp9c_gamma.pth",
+      "unknown": [
+        "keypoints",
+        "input_size",
+        "preprocess",
+        "precision",
+        "out_size"
+      ]
+    },
+    {
+      "checkpoint": "m0_kp_resnet18.pth",
+      "unknown": [
+        "keypoints",
+        "input_size",
+        "preprocess",
+        "precision",
+        "out_size"
+      ]
+    },
+    {
+      "checkpoint": "m0_overfit.pth",
+      "unknown": [
+        "keypoints",
+        "input_size",
+        "preprocess",
+        "precision",
+        "out_size"
+      ]
+    },
+    {
+      "checkpoint": "m0_plain_resnet18.pth",
+      "unknown": [
+        "keypoints",
+        "input_size",
+        "preprocess"
+      ]
+    },
+    {
+      "checkpoint": "m0_seq_cons.pth",
+      "unknown": [
+        "keypoints",
+        "input_size"
+      ]
+    },
+    {
+      "checkpoint": "m0_seq_cons_best.pth",
+      "unknown": [
+        "keypoints",
+        "input_size",
+        "preprocess",
+        "precision",
+        "out_size"
+      ]
+    },
+    {
+      "checkpoint": "m0_seq_cos.pth",
+      "unknown": [
+        "keypoints",
+        "input_size"
+      ]
+    },
+    {
+      "checkpoint": "m0_seq_cos_best.pth",
+      "unknown": [
+        "keypoints",
+        "input_size",
+        "preprocess",
+        "precision",
+        "out_size"
+      ]
+    },
+    {
+      "checkpoint": "m0_seq_gamma.pth",
+      "unknown": [
+        "keypoints",
+        "input_size",
+        "preprocess",
+        "precision",
+        "out_size"
+      ]
+    }
+  ]
+}
